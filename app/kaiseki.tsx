@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as Clipboard from 'expo-clipboard';
 import {
   ActivityIndicator,
   Alert,
@@ -10,8 +11,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  AppState,
 } from "react-native";
 
 import { ScreenWithLeaves } from "../components/screen-with-leaves";
@@ -21,6 +24,9 @@ import {
   deleteGuideEntry,
   analyzeNaturePhoto,
   uriToDataUrl,
+  hasValidToken,
+  setInaturalistToken,
+  loadStoredToken,
   type AnalysisStatus,
   type Candidate,
   type CategoryId,
@@ -83,6 +89,9 @@ export default function KaisekiScreen() {
     "confirmed" | "rejected" | null
   >(null);
   const [savedEntryId, setSavedEntryId] = useState<string | null>(null); // 保存済みエントリーID
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenInputValue, setTokenInputValue] = useState("");
+  const appState = useRef(AppState.currentState);
 
   // 各セクションのアニメーション実行済みフラグ（一度実行したら永久に維持）
   const [animatedSections, setAnimatedSections] = useState<Set<string>>(
@@ -189,6 +198,26 @@ export default function KaisekiScreen() {
 
   async function handleAnalyze() {
     if (!selectedCategory || !imageDataUrl) return;
+
+    // トークン未設定の場合はAlertで案内
+    if (!hasValidToken()) {
+      Alert.alert(
+        "iNaturalist APIトークンを使用します(無料)",
+        "各自でiNaturalistの公式サイトから発行されたトークンを利用します。\n\nこのアプリの解析機能は無料で利用いただけます。詳しくは下記を参照ください\n\n✅ トークンはあなたの端末内にのみ保存され、開発者や第三者が見ることは一切できません\n✅ iNaturalistは世界で最も信頼されている自然観察プラットフォームです",
+        [
+          { text: "📖 画像付き手順を見る", onPress: () => Linking.openURL("https://github.com/myame0002/Name-Nature/wiki/%E3%83%88%E3%83%BC%E3%82%AF%E3%83%B3%E3%81%AE%E5%8F%96%E5%BE%97%E6%96%B9%E6%B3%95") },
+          { text: " トークンを取得する", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
+          { 
+            text: " トークンを入力する", 
+            onPress: () => {
+              setShowTokenInput(true);
+            }
+          },
+          { text: "あとで", style: "cancel" }
+        ]
+      );
+      return;
+    }
 
     setAnalysisStatus("loading");
     setAnalysisMessage(null);
@@ -319,6 +348,48 @@ export default function KaisekiScreen() {
   );
   const canAnalyze =
     !!selectedCategory && !!imageDataUrl && analysisStatus !== "loading";
+
+  // アプリがバックグラウンドから復帰した時にクリップボードを自動検知
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active' &&
+        showTokenInput
+      ) {
+        // アプリが復帰した & トークン入力モーダルが開いている
+        const hasText = await Clipboard.hasStringAsync();
+        if (hasText) {
+          const text = await Clipboard.getStringAsync();
+          // JWTトークンのパターンを検知 (eyJ で始まるもの)
+          if (text.trim().startsWith('eyJ') && text.length > 100) {
+            setTokenInputValue(text.trim());
+            // 自動的に保存しても良いか確認
+            Alert.alert(
+              "トークンを検知しました！",
+              "クリップボードにiNaturalistトークンがあります。自動的に設定しますか？",
+              [
+                { text: "いいえ", style: "cancel" },
+                { 
+                  text: "はい、設定する", 
+                  onPress: async () => {
+                    await setInaturalistToken(text.trim());
+                    setShowTokenInput(false);
+                    setTokenInputValue("");
+                    Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。");
+                  }
+                }
+              ]
+            );
+          }
+        }
+      }
+      
+      appState.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, [showTokenInput]);
 
   // アニメーション付きセクションラッパー（メモ化済みで画像のちらつき防止）
   const AnimatedSection = useMemo(() => {
@@ -680,6 +751,52 @@ export default function KaisekiScreen() {
 
       {/* Bottom spacer */}
       <View style={{ height: 60 }} />
+
+      {/* トークン入力モーダル */}
+      {showTokenInput && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>APIトークンを設定</Text>
+            <Text style={styles.modalDescription}>
+              iNaturalistから取得したJWTトークンを貼り付けてください
+            </Text>
+
+            <TextInput
+              style={styles.tokenInput}
+              value={tokenInputValue}
+              onChangeText={setTokenInputValue}
+              placeholder="JWT トークンをここに貼り付け"
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline
+              numberOfLines={4}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowTokenInput(false)}
+              >
+                <Text style={styles.modalCancelText}>キャンセル</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={async () => {
+                  if (tokenInputValue.trim()) {
+                    await setInaturalistToken(tokenInputValue.trim());
+                    setShowTokenInput(false);
+                    setTokenInputValue("");
+                    Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。");
+                  }
+                }}
+              >
+                <Text style={styles.modalSaveText}>保存</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </ScreenWithLeaves>
   );
 }
@@ -1086,5 +1203,83 @@ const styles = StyleSheet.create({
     color: "#2A4A33",
     fontWeight: "700",
     fontSize: 14,
+  },
+
+  // Token Modal Styles
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 380,
+    gap: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#17351F",
+    textAlign: "center",
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: "#5C7A62",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  tokenInput: {
+    borderWidth: 1.5,
+    borderColor: "#D0E1D1",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 13,
+    backgroundColor: "#FBFDFC",
+    textAlignVertical: "top",
+    minHeight: 100,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D0E1D1",
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: "#4A6652",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  modalSaveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "#2D6A4F",
+    alignItems: "center",
+  },
+  modalSaveText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });

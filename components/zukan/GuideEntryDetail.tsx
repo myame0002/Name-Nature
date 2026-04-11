@@ -372,24 +372,6 @@ export function GuideEntryDetail({
           />
         </Animated.View>
 
-        <Animated.View style={[styles.section, {
-          opacity: animSection3,
-          transform: [{ translateY: animSection3.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }]
-        }]}>
-          <View style={styles.sectionStringLeft} />
-          <View style={styles.sectionStringRight} />
-          <View style={styles.sectionNailLeft} />
-          <View style={styles.sectionNailRight} />
-          <Text style={styles.sectionTitle}>この生きものについて聞く</Text>
-          <TextInput
-            style={styles.chatInput}
-            multiline
-            placeholder="質問を入力してください..."
-          />
-          <TouchableOpacity style={styles.chatSubmitButton} activeOpacity={0.7}>
-            <Text style={styles.chatSubmitText}>送信</Text>
-          </TouchableOpacity>
-        </Animated.View>
       </View>
 
       {/* フルスクリーン画像モーダル */}
@@ -723,28 +705,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: "top",
-  },
-  chatInput: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#DCE5DC",
-    padding: 12,
-    fontSize: 14,
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  chatSubmitButton: {
-    marginTop: 8,
-    backgroundColor: "#2D6A4F",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  chatSubmitText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
   },
   fullscreenModalOverlay: {
     flex: 1,

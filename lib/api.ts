@@ -7,7 +7,7 @@
  * Set API_BASE_URL below to point at the running server instance.
  */
 
-const API_BASE_URL = "http://192.168.32.175:8787/api"; // same machine (web mode)
+const API_BASE_URL = "http://localhost:8787/api"; // same machine (web mode)
 
 // ── Types ──────────────────────────────────────────────────────────
 

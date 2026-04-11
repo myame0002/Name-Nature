@@ -141,10 +141,12 @@ async function handleAnalyze(request, response) {
     formData.append('aggregated', 'true')
     formData.append('delegate_ca', 'true')
 
+    console.log('🔍 送信ヘッダー確認:', { Authorization: `Bearer ${token}` });
     const upstreamResponse = await fetch(`https://api.inaturalist.org/v1/computervision/score_image?${query.toString()}`, {
       method: 'POST',
       headers: {
-        Authorization: token,
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'Nature-Pics/1.0'
       },
       body: formData,
     })

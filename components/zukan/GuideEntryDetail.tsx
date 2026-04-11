@@ -213,7 +213,7 @@ export function GuideEntryDetail({
             onPress={() => setIsImageFullscreen(true)}
           >
             <Image
-              source={{ uri: entry.imageDataUrl || entry.imageUrl }}
+              source={{ uri: entry.imageUrl }}
               style={styles.detailImage}
               contentFit="cover"
             />
@@ -389,7 +389,7 @@ export function GuideEntryDetail({
 
         >
           <Image
-            source={{ uri: entry.imageDataUrl || entry.imageUrl }}
+            source={{ uri: entry.imageUrl }}
             style={styles.fullscreenImage}
             contentFit="contain"
           />

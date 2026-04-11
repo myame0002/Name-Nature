@@ -46,7 +46,7 @@ export function GuideEntryCard({ entry, entryNumber, isSelected = false, isEditM
         isSelected && styles.cardSelected
       ]}>
         <Image
-          source={{ uri: entry.imageDataUrl || entry.imageUrl }}
+          source={{ uri: entry.imageUrl }}
           style={styles.cardImage}
           contentFit="cover"
         />

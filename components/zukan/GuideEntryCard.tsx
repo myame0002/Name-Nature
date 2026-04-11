@@ -50,12 +50,12 @@ export function GuideEntryCard({ entry, entryNumber, isSelected = false, isEditM
           style={styles.cardImage}
           contentFit="cover"
         />
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>{entry.title}</Text>
-          {!!entry.scientificName && (
-            <Text style={styles.scientific}>{entry.scientificName}</Text>
-          )}
-        </View>
+         <View style={styles.cardBody}>
+           <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{entry.title}</Text>
+           {!!entry.scientificName && (
+             <Text style={styles.scientific} numberOfLines={1} ellipsizeMode="tail">{entry.scientificName}</Text>
+           )}
+         </View>
       </View>
     </Pressable>
   );

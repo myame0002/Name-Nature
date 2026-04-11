@@ -1,7 +1,8 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
+  Alert,
   Modal,
   StyleSheet,
   Text,
@@ -9,9 +10,11 @@ import {
   TouchableOpacity,
   View,
   Animated,
+  Linking,
 } from "react-native";
 
 import { ScreenWithLeaves } from "../../components/screen-with-leaves";
+import { hasValidToken, setInaturalistToken, loadStoredToken, setTokenExpiredSimulation, isTokenExpiredSimulationEnabled } from '@/lib/api';
 
 type Step = {
   title: string;
@@ -91,7 +94,42 @@ export default function HomeScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [language, setLanguage] = useState<"ja" | "en">("ja");
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [tokenStatus, setTokenStatus] = useState<'checking' | 'valid' | 'invalid' | 'expired'>('checking');
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenInputValue, setTokenInputValue] = useState("");
+  
+  // 設定モーダル表示アニメーション
+  const settingsModalAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    if (showSettings) {
+      // 下からスライドイン
+      Animated.spring(settingsModalAnim, {
+        toValue: 1,
+        tension: 70,
+        friction: 14,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // 下へスライドアウト
+      Animated.timing(settingsModalAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showSettings]);
+
+  // 設定画面を開いた時にトークン状態を確認
+  useState(() => {
+    if (showSettings) {
+      if (hasValidToken()) {
+        setTokenStatus('valid');
+      } else {
+        setTokenStatus('invalid');
+      }
+    }
+  });
 
   return (
     <ScreenWithLeaves
@@ -111,10 +149,31 @@ export default function HomeScreen() {
           <View style={styles.buttonHangWrapper}>
             <View style={styles.hangStringLeft} />
             <View style={styles.hangStringRight} />
-            <TouchableOpacity
+              <TouchableOpacity
               style={styles.mainPrimaryButton}
               activeOpacity={0.85}
-              onPress={() => router.push("/kaiseki")}
+              onPress={() => {
+                if (!hasValidToken()) {
+                  Alert.alert(
+                    "iNaturalist APIトークンを使用します(無料)",
+                    "各自でiNaturalistの公式サイトから発行されたトークンを利用します。\n\nこのアプリの解析機能は無料で利用いただけます。詳しくは下記を参照ください\n\n✅ トークンはあなたの端末内にのみ保存されます\n✅ iNaturalistは世界で最も信頼されている自然観察プラットフォームです",
+                    [
+                      { text: "📖 詳しい説明を読む", onPress: () => router.push("/modal") },
+                      { text: " トークンを取得する", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
+                      { 
+                        text: " トークンを入力する", 
+                        onPress: () => {
+                          setShowTokenInput(true);
+                        }
+                      },
+                      { text: "あとで", style: "cancel" }
+                    ],
+                    { cancelable: true }
+                  );
+                  return;
+                }
+                router.push("/kaiseki");
+              }}
             >
               <View style={styles.nailLeft} />
               <View style={styles.nailRight} />
@@ -148,8 +207,33 @@ export default function HomeScreen() {
 
       {/* 設定モーダル */}
       <Modal visible={showSettings} transparent animationType="none">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.settingsModal}>
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => {
+            // 先に下へスライドアウトアニメーション実行
+            Animated.timing(settingsModalAnim, {
+              toValue: 0,
+              duration: 280,
+              useNativeDriver: true,
+            }).start(() => {
+              // アニメーション完了後にModalを非表示
+              setShowSettings(false);
+            });
+          }}
+        >
+          <Animated.View style={[
+            styles.settingsModal,
+            {
+              transform: [{
+                translateY: settingsModalAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [600, 0],
+                }),
+              }],
+              opacity: settingsModalAnim,
+            }
+          ]}>
             <Text style={styles.settingsTitle}>環境設定</Text>
             
             {/* 言語設定 */}
@@ -187,13 +271,126 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* 🔑 APIトークン状態 */}
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>APIトークン</Text>
+              <View style={styles.tokenStatusContainer}>
+                <View style={[
+                  styles.tokenStatusBadge,
+                  tokenStatus === 'valid' && styles.tokenStatusValid,
+                  tokenStatus === 'invalid' && styles.tokenStatusInvalid,
+                  tokenStatus === 'expired' && styles.tokenStatusExpired,
+                ]}>
+                  <Text style={[
+                    styles.tokenStatusText,
+                    tokenStatus === 'valid' && styles.tokenStatusTextValid,
+                  ]}>
+                    {tokenStatus === 'valid' ? '✅ 有効' :
+                     tokenStatus === 'expired' ? '⚠️ 期限切れ' : '❌ 未設定'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.tokenDebugRow}>
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={() => setInaturalistToken(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.debugButtonText}>🧹 トークンを削除</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={async () => {
+                  await loadStoredToken();
+                  hasValidToken() ? setTokenStatus('valid') : setTokenStatus('invalid');
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.debugButtonText}>🔄 状態を更新</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.tokenDebugRow}>
+              <TouchableOpacity
+                style={[styles.debugButton, styles.debugButtonWarn]}
+                onPress={() => {
+                  // ✅ 本物のトークンはそのまま残して、APIだけ強制的に期限切れエラーを返す
+                  setTokenExpiredSimulation(true);
+                  setTokenStatus('expired');
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.debugButtonText, styles.debugButtonTextWarn]}>⚠️ 期限切れをシミュレート</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               style={styles.settingsCloseButton}
-              onPress={() => setShowSettings(false)}
+              onPress={() => {
+                Animated.timing(settingsModalAnim, {
+                  toValue: 0,
+                  duration: 280,
+                  useNativeDriver: true,
+                }).start(() => {
+                  setShowSettings(false);
+                });
+              }}
               activeOpacity={0.85}
             >
               <Text style={styles.settingsCloseButtonText}>閉じる</Text>
             </TouchableOpacity>
+           </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 🔑 トークン入力モーダル */}
+      <Modal visible={showTokenInput} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>APIトークンを設定</Text>
+            <Text style={styles.modalDescription}>
+              iNaturalistから取得したJWTトークンを貼り付けてください
+            </Text>
+
+            <TextInput
+              style={styles.tokenInput}
+              value={tokenInputValue}
+              onChangeText={setTokenInputValue}
+              placeholder="JWT トークンをここに貼り付け"
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline
+              numberOfLines={4}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowTokenInput(false);
+                  setTokenInputValue("");
+                }}
+              >
+                <Text style={styles.modalCancelText}>キャンセル</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={async () => {
+                  if (tokenInputValue.trim()) {
+                    await setInaturalistToken(tokenInputValue.trim());
+                    setShowTokenInput(false);
+                    setTokenInputValue("");
+                     Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。", [], { cancelable: true });
+                  }
+                }}
+              >
+                <Text style={styles.modalSaveText}>保存</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -696,5 +893,137 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
+  },
+
+  // トークンステータス表示
+  tokenStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  tokenStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  tokenStatusValid: {
+    backgroundColor: "#DDF3E6",
+    borderColor: "#2D6A4F",
+  },
+  tokenStatusInvalid: {
+    backgroundColor: "#FFF5F5",
+    borderColor: "#E07070",
+  },
+  tokenStatusExpired: {
+    backgroundColor: "#FFF9E5",
+    borderColor: "#E0B040",
+  },
+  tokenStatusText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#666666",
+  },
+  tokenStatusTextValid: {
+    color: "#1F4C2D",
+  },
+  tokenDebugRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  debugButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#F5F8F4",
+    borderWidth: 1,
+    borderColor: "#D9E4D9",
+    alignItems: "center",
+  },
+  debugButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#5C7A62",
+  },
+  debugButtonWarn: {
+    backgroundColor: "#FFF9E5",
+    borderColor: "#E0B040",
+  },
+  debugButtonTextWarn: {
+    color: "#8B6910",
+  },
+
+  // トークン入力モーダル
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 380,
+    gap: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: "#5C7A62",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  tokenInput: {
+    borderWidth: 1.5,
+    borderColor: "#D0E1D1",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 13,
+    backgroundColor: "#FBFDFC",
+    textAlignVertical: "top",
+    minHeight: 100,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D0E1D1",
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: "#4A6652",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  modalSaveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "#2D6A4F",
+    alignItems: "center",
+  },
+  modalSaveText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });

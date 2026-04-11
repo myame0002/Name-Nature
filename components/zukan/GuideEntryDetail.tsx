@@ -1,6 +1,6 @@
 import { type GuideEntry, updateGuideEntry } from "@/lib/api";
 import { Image } from "expo-image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Alert,
   Modal,
@@ -13,7 +13,8 @@ import {
   Easing,
   Dimensions,
   StatusBar,
-  Platform
+  Platform,
+  BackHandler
 } from "react-native";
 
 
@@ -63,6 +64,21 @@ export function GuideEntryDetail({
     note: entry.note,
   });
 
+  // Android 戻るボタンハンドラ
+  const handleBackPress = useCallback(() => {
+    onBackToList();
+    return true; // デフォルトの戻る動作をキャンセル
+  }, [onBackToList]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+      return () => {
+        subscription.remove();
+      };
+    }
+  }, [handleBackPress]);
+
   // シーケンスアニメーション用
   const animMainCard = useRef(new Animated.Value(0)).current;
   const animSection1 = useRef(new Animated.Value(0)).current;
@@ -100,7 +116,7 @@ export function GuideEntryDetail({
     });
     setIsEditMode(false);
     onEntryUpdated();
-    Alert.alert("保存完了", "情報が更新されました");
+    Alert.alert("保存完了", "情報が更新されました", [], { cancelable: true });
   };
 
   const handleCancel = () => {
@@ -142,7 +158,7 @@ export function GuideEntryDetail({
           });
         },
       },
-    ]);
+    ], { cancelable: true });
   };
 
   const updateTaxonomy = (field: string, value: string) => {

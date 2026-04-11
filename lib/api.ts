@@ -11,6 +11,24 @@
 let INATURALIST_API_TOKEN: string | null = null;
 const JAPAN_PLACE_ID = 6737;
 
+// デバッグ用：期限切れシミュレーションモード
+let SIMULATE_TOKEN_EXPIRED: boolean = false;
+
+/**
+ * デバッグ用：トークン期限切れをシミュレートします
+ * true に設定するとトークン自体は有効なまま、APIリクエストのみ強制的に401エラーを返します
+ */
+export function setTokenExpiredSimulation(enabled: boolean) {
+  SIMULATE_TOKEN_EXPIRED = enabled;
+}
+
+/**
+ * 現在期限切れシミュレーションモードが有効かどうかを返します
+ */
+export function isTokenExpiredSimulationEnabled(): boolean {
+  return SIMULATE_TOKEN_EXPIRED;
+}
+
 const categoryConfig = {
   flower: {
     id: "flower",
@@ -230,6 +248,9 @@ async function saveToStorage() {
 // 初期化時に読み込み（非同期実行）
 loadFromStorage();
 
+// アプリ起動時に自動的に保存されているトークンを読み込み
+loadStoredToken();
+
 export async function waitForStorageLoad() {
   await loadFromStorage();
 }
@@ -280,6 +301,84 @@ export function updateGuideEntry(
   saveToStorage();
   return guideEntriesStorage[index];
 }
+
+// ── カスタムカテゴリ ──────────────────────────────────────────────────────
+
+export type CustomCategory = {
+  id: string;
+  name: string;
+  color: string;
+  colorActive: string;
+};
+
+let customCategoriesStorage: CustomCategory[] = [];
+
+async function loadCustomCategories() {
+  try {
+    if (Platform.OS === "web") {
+      const stored = localStorage.getItem("customCategories");
+      if (stored) {
+        customCategoriesStorage = JSON.parse(stored);
+      }
+    } else {
+      const stored = await AsyncStorage.getItem("customCategories");
+      if (stored) {
+        customCategoriesStorage = JSON.parse(stored);
+      }
+    }
+  } catch (e) {
+    console.log("Custom categories load error:", e);
+    customCategoriesStorage = [];
+  }
+}
+
+async function saveCustomCategories() {
+  try {
+    if (Platform.OS === "web") {
+      localStorage.setItem("customCategories", JSON.stringify(customCategoriesStorage));
+    } else {
+      await AsyncStorage.setItem("customCategories", JSON.stringify(customCategoriesStorage));
+    }
+  } catch (e) {
+    console.log("Custom categories save error:", e);
+  }
+}
+
+export function getCustomCategories(): CustomCategory[] {
+  return [...customCategoriesStorage];
+}
+
+export function addCustomCategory(category: Omit<CustomCategory, "id">): CustomCategory {
+  const newCategory: CustomCategory = {
+    ...category,
+    id: `custom-${Date.now()}`,
+  };
+  customCategoriesStorage.push(newCategory);
+  saveCustomCategories();
+  return newCategory;
+}
+
+export function updateCustomCategory(categoryId: string, updates: Partial<CustomCategory>): CustomCategory | null {
+  const index = customCategoriesStorage.findIndex((c) => c.id === categoryId);
+  if (index === -1) return null;
+  customCategoriesStorage[index] = {
+    ...customCategoriesStorage[index],
+    ...updates,
+  };
+  saveCustomCategories();
+  return customCategoriesStorage[index];
+}
+
+export function deleteCustomCategory(categoryId: string): boolean {
+  const index = customCategoriesStorage.findIndex((c) => c.id === categoryId);
+  if (index === -1) return false;
+  customCategoriesStorage.splice(index, 1);
+  saveCustomCategories();
+  return true;
+}
+
+// 初期化時に読み込み（非同期実行）
+loadCustomCategories();
 
 /**
  * ユーザーのiNaturalist APIトークンを設定します
@@ -676,6 +775,13 @@ export async function analyzeNaturePhoto(
 
   let response: Response;
 
+  // ✅ デバッグ用：期限切れシミュレーションモード
+  if (SIMULATE_TOKEN_EXPIRED) {
+    // 実際にAPIを叩かず、直接401エラーと同じ挙動を再現
+    SIMULATE_TOKEN_EXPIRED = false; // 一回だけ動作して自動的にOFFになる
+    throw new Error("TOKEN_EXPIRED");
+  }
+
   try {
     const imageData = dataUrlToBlob(imageDataUrl);
     const formData = new FormData();
@@ -725,6 +831,13 @@ export async function analyzeNaturePhoto(
   const json = parseJsonBody(text);
 
   if (!response.ok) {
+    // トークン期限切れ・無効の場合は特別に処理
+    if (response.status === 401) {
+      // 無効なトークンを削除
+      await setInaturalistToken(null);
+      throw new Error("TOKEN_EXPIRED");
+    }
+    
     throw new Error(extractErrorMessage(json, response.status, text));
   }
 

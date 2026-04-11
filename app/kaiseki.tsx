@@ -115,7 +115,7 @@ export default function KaisekiScreen() {
   async function handleTakePhoto() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("権限が必要です", "カメラへのアクセスを許可してください。");
+      Alert.alert("権限が必要です", "カメラへのアクセスを許可してください。", [], { cancelable: true });
       return;
     }
 
@@ -146,7 +146,7 @@ export default function KaisekiScreen() {
         setImageDataUrl(dataUrl);
       }
     } catch {
-      Alert.alert("エラー", "画像の読み込みに失敗しました。");
+      Alert.alert("エラー", "画像の読み込みに失敗しました。", [], { cancelable: true });
       setImageUri(null);
       setAnalysisStatus("idle");
     }
@@ -158,6 +158,8 @@ export default function KaisekiScreen() {
       Alert.alert(
         "権限が必要です",
         "写真ライブラリへのアクセスを許可してください。",
+        [],
+        { cancelable: true }
       );
       return;
     }
@@ -190,7 +192,7 @@ export default function KaisekiScreen() {
         setImageDataUrl(dataUrl);
       }
     } catch {
-      Alert.alert("エラー", "画像の読み込みに失敗しました。");
+      Alert.alert("エラー", "画像の読み込みに失敗しました。", [], { cancelable: true });
       setImageUri(null);
       setAnalysisStatus("idle");
     }
@@ -198,26 +200,6 @@ export default function KaisekiScreen() {
 
   async function handleAnalyze() {
     if (!selectedCategory || !imageDataUrl) return;
-
-    // トークン未設定の場合はAlertで案内
-    if (!hasValidToken()) {
-      Alert.alert(
-        "iNaturalist APIトークンを使用します(無料)",
-        "各自でiNaturalistの公式サイトから発行されたトークンを利用します。\n\nこのアプリの解析機能は無料で利用いただけます。詳しくは下記を参照ください\n\n✅ トークンはあなたの端末内にのみ保存され、開発者や第三者が見ることは一切できません\n✅ iNaturalistは世界で最も信頼されている自然観察プラットフォームです",
-        [
-          { text: "📖 画像付き手順を見る", onPress: () => Linking.openURL("https://github.com/myame0002/Name-Nature/wiki/%E3%83%88%E3%83%BC%E3%82%AF%E3%83%B3%E3%81%AE%E5%8F%96%E5%BE%97%E6%96%B9%E6%B3%95") },
-          { text: " トークンを取得する", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
-          { 
-            text: " トークンを入力する", 
-            onPress: () => {
-              setShowTokenInput(true);
-            }
-          },
-          { text: "あとで", style: "cancel" }
-        ]
-      );
-      return;
-    }
 
     setAnalysisStatus("loading");
     setAnalysisMessage(null);
@@ -241,6 +223,21 @@ export default function KaisekiScreen() {
       }
     } catch (error) {
       setAnalysisStatus("error");
+
+      if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
+        Alert.alert(
+          "🔑 トークンの有効期限が切れました",
+          "iNaturalistのトークンは約60日で有効期限が切れます。新しいトークンを取得して再度設定してください。",
+          [
+            { text: "📖 手順を見る", onPress: () => router.push("/modal") },
+            { text: " 新しいトークンを取得", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
+            { text: " トークンを入力", onPress: () => setShowTokenInput(true) },
+          ],
+          { cancelable: true }
+        );
+        setAnalysisMessage("トークンの有効期限が切れました。再度設定してください。");
+        return;
+      }
 
       if (
         error instanceof Error &&
@@ -376,10 +373,11 @@ export default function KaisekiScreen() {
                     await setInaturalistToken(text.trim());
                     setShowTokenInput(false);
                     setTokenInputValue("");
-                    Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。");
+                    Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。", [], { cancelable: true });
                   }
                 }
-              ]
+              ],
+              { cancelable: true }
             );
           }
         }
@@ -510,7 +508,7 @@ export default function KaisekiScreen() {
                     { text: "📷 カメラで撮影", onPress: handleTakePhoto },
                     { text: "📂 ライブラリから選ぶ", onPress: handlePickImage },
                     { text: "キャンセル", style: "cancel" },
-                  ]);
+                  ], { cancelable: true });
                 }}
               >
                 <Image
@@ -787,7 +785,7 @@ export default function KaisekiScreen() {
                     await setInaturalistToken(tokenInputValue.trim());
                     setShowTokenInput(false);
                     setTokenInputValue("");
-                    Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。");
+                     Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。", [], { cancelable: true });
                   }
                 }}
               >

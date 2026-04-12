@@ -14,7 +14,9 @@ import {
 } from "react-native";
 
 import { ScreenWithLeaves } from "../../components/screen-with-leaves";
+import { TokenInputModal } from '../../components/TokenInputModal';
 import { hasValidToken, setInaturalistToken, loadStoredToken, setTokenExpiredSimulation, isTokenExpiredSimulationEnabled } from '@/lib/api';
+import { useLanguage } from '@/context/LanguageContext';
 
 type Step = {
   title: string;
@@ -92,11 +94,10 @@ const mockGuideEntries: GuideEntry[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
-  const [language, setLanguage] = useState<"ja" | "en">("ja");
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const { t, language, setLanguage } = useLanguage();
   const [tokenStatus, setTokenStatus] = useState<'checking' | 'valid' | 'invalid' | 'expired'>('checking');
   const [showTokenInput, setShowTokenInput] = useState(false);
-  const [tokenInputValue, setTokenInputValue] = useState("");
   
   // 設定モーダル表示アニメーション
   const settingsModalAnim = useRef(new Animated.Value(0)).current;
@@ -140,7 +141,7 @@ export default function HomeScreen() {
         {/* タイトルセクション */}
         <View style={styles.titleSection}>
         <Animated.Text style={styles.appName}>Name Nature</Animated.Text>
-        <Text style={styles.tagline}>身の回りの自然を、より鮮明に</Text>
+        <Text style={styles.tagline}>{t('tagline')}</Text>
         </View>
 
         {/* メインアクションボタン */}
@@ -155,18 +156,18 @@ export default function HomeScreen() {
               onPress={() => {
                 if (!hasValidToken()) {
                   Alert.alert(
-                    "iNaturalist APIトークンを使用します(無料)",
-                    "各自でiNaturalistの公式サイトから発行されたトークンを利用します。\n\nこのアプリの解析機能は無料で利用いただけます。詳しくは下記を参照ください\n\n✅ トークンはあなたの端末内にのみ保存されます\n✅ iNaturalistは世界で最も信頼されている自然観察プラットフォームです",
+                    t('iNaturalistAlertTitle'),
+                    t('iNaturalistAlertMessage'),
                     [
-                      { text: "📖 詳しい説明を読む", onPress: () => router.push("/modal") },
-                      { text: " トークンを取得する", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
+                      { text: t('readDetails'), onPress: () => router.push("/modal") },
+                      { text: t('getToken'), onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
                       { 
-                        text: " トークンを入力する", 
+                        text: t('enterToken'), 
                         onPress: () => {
                           setShowTokenInput(true);
                         }
                       },
-                      { text: "あとで", style: "cancel" }
+                      { text: t('later'), style: "cancel" }
                     ],
                     { cancelable: true }
                   );
@@ -177,7 +178,7 @@ export default function HomeScreen() {
             >
               <View style={styles.nailLeft} />
               <View style={styles.nailRight} />
-              <Text style={styles.mainPrimaryButtonText}>解析をはじめる</Text>
+              <Text style={styles.mainPrimaryButtonText}>{t('startAnalysis')}</Text>
             </TouchableOpacity>
           </View>
           
@@ -191,7 +192,7 @@ export default function HomeScreen() {
             >
               <View style={styles.nailLeft} />
               <View style={styles.nailRight} />
-              <Text style={styles.mainSecondaryButtonText}>図鑑を見る</Text>
+              <Text style={styles.mainSecondaryButtonText}>{t('viewGuide')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -200,7 +201,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             onPress={() => setShowSettings(true)}
           >
-            <Text style={styles.settingsButtonText}>⚙️ 環境設定</Text>
+            <Text style={styles.settingsButtonText}>{t('settings')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -234,11 +235,11 @@ export default function HomeScreen() {
               opacity: settingsModalAnim,
             }
           ]}>
-            <Text style={styles.settingsTitle}>環境設定</Text>
+            <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
             
             {/* 言語設定 */}
             <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>言語</Text>
+              <Text style={styles.settingLabel}>{t('language')}</Text>
               <View style={styles.languageButtons}>
                 <TouchableOpacity 
                   style={[styles.langButton, language === "ja" && styles.langButtonActive]}
@@ -257,40 +258,35 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* 音量設定 */}
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>BGM</Text>
-              <TouchableOpacity 
-                style={[styles.toggleButton, soundEnabled && styles.toggleButtonActive]}
-                onPress={() => setSoundEnabled(!soundEnabled)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.toggleButtonText, soundEnabled && styles.toggleButtonTextActive]}>
-                  {soundEnabled ? "ON" : "OFF"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* 🔑 APIトークン状態 */}
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>APIトークン</Text>
-              <View style={styles.tokenStatusContainer}>
-                <View style={[
-                  styles.tokenStatusBadge,
-                  tokenStatus === 'valid' && styles.tokenStatusValid,
-                  tokenStatus === 'invalid' && styles.tokenStatusInvalid,
-                  tokenStatus === 'expired' && styles.tokenStatusExpired,
-                ]}>
-                  <Text style={[
-                    styles.tokenStatusText,
-                    tokenStatus === 'valid' && styles.tokenStatusTextValid,
-                  ]}>
-                    {tokenStatus === 'valid' ? '✅ 有効' :
-                     tokenStatus === 'expired' ? '⚠️ 期限切れ' : '❌ 未設定'}
-                  </Text>
-                </View>
-              </View>
-            </View>
+             {/* 🔑 APIトークン状態 */}
+             <View style={styles.settingRow}>
+               <Text style={styles.settingLabel}>{t('apiToken')}</Text>
+               <View style={styles.tokenStatusContainer}>
+                 <View style={[
+                   styles.tokenStatusBadge,
+                   tokenStatus === 'valid' && styles.tokenStatusValid,
+                   tokenStatus === 'invalid' && styles.tokenStatusInvalid,
+                   tokenStatus === 'expired' && styles.tokenStatusExpired,
+                 ]}>
+                   <Text style={[
+                     styles.tokenStatusText,
+                     tokenStatus === 'valid' && styles.tokenStatusTextValid,
+                   ]}>
+                     {tokenStatus === 'valid' ? t('tokenValid') :
+                      tokenStatus === 'expired' ? t('tokenExpired') : t('tokenInvalid')}
+                   </Text>
+                 </View>
+                 <TouchableOpacity 
+                   style={[styles.toggleButton, { marginLeft: 8 }]}
+                   onPress={() => setShowTokenInput(true)}
+                   activeOpacity={0.8}
+                 >
+                   <Text style={styles.toggleButtonText}>
+                     {t('enterToken')}
+                   </Text>
+                 </TouchableOpacity>
+               </View>
+             </View>
 
             <View style={styles.tokenDebugRow}>
               <TouchableOpacity
@@ -298,7 +294,7 @@ export default function HomeScreen() {
                 onPress={() => setInaturalistToken(null)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.debugButtonText}>🧹 トークンを削除</Text>
+                <Text style={styles.debugButtonText}>{t('deleteToken')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -309,7 +305,7 @@ export default function HomeScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <Text style={styles.debugButtonText}>🔄 状態を更新</Text>
+                <Text style={styles.debugButtonText}>{t('refreshStatus')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -323,7 +319,7 @@ export default function HomeScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.debugButtonText, styles.debugButtonTextWarn]}>⚠️ 期限切れをシミュレート</Text>
+                <Text style={[styles.debugButtonText, styles.debugButtonTextWarn]}>{t('simulateExpired')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -340,60 +336,20 @@ export default function HomeScreen() {
               }}
               activeOpacity={0.85}
             >
-              <Text style={styles.settingsCloseButtonText}>閉じる</Text>
+              <Text style={styles.settingsCloseButtonText}>{t('close')}</Text>
             </TouchableOpacity>
            </Animated.View>
         </TouchableOpacity>
       </Modal>
 
       {/* 🔑 トークン入力モーダル */}
-      <Modal visible={showTokenInput} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>APIトークンを設定</Text>
-            <Text style={styles.modalDescription}>
-              iNaturalistから取得したJWTトークンを貼り付けてください
-            </Text>
-
-            <TextInput
-              style={styles.tokenInput}
-              value={tokenInputValue}
-              onChangeText={setTokenInputValue}
-              placeholder="JWT トークンをここに貼り付け"
-              autoCapitalize="none"
-              autoCorrect={false}
-              multiline
-              numberOfLines={4}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowTokenInput(false);
-                  setTokenInputValue("");
-                }}
-              >
-                <Text style={styles.modalCancelText}>キャンセル</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalSaveButton}
-                onPress={async () => {
-                  if (tokenInputValue.trim()) {
-                    await setInaturalistToken(tokenInputValue.trim());
-                    setShowTokenInput(false);
-                    setTokenInputValue("");
-                     Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。", [], { cancelable: true });
-                  }
-                }}
-              >
-                <Text style={styles.modalSaveText}>保存</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <TokenInputModal
+        visible={showTokenInput}
+        onClose={() => setShowTokenInput(false)}
+        onSuccess={() => {
+          Alert.alert(t('setupComplete'), t('tokenSaved'), [], { cancelable: true });
+        }}
+      />
 
     </ScreenWithLeaves>
   );

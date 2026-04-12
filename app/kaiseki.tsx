@@ -1,12 +1,13 @@
+import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as Clipboard from 'expo-clipboard';
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Linking,
   ScrollView,
   StyleSheet,
@@ -14,19 +15,17 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  AppState,
 } from "react-native";
 
+import { useLanguage } from "@/context/LanguageContext";
 import { ScreenWithLeaves } from "../components/screen-with-leaves";
 
 import {
   addGuideEntry,
-  deleteGuideEntry,
   analyzeNaturePhoto,
-  uriToDataUrl,
-  hasValidToken,
+  deleteGuideEntry,
   setInaturalistToken,
-  loadStoredToken,
+  uriToDataUrl,
   type AnalysisStatus,
   type Candidate,
   type CategoryId,
@@ -72,6 +71,7 @@ const categories: CategoryMeta[] = [
 
 export default function KaisekiScreen() {
   const router = useRouter();
+  const { t, language } = useLanguage();
 
   // State
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(
@@ -100,6 +100,8 @@ export default function KaisekiScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const decisionSectionRef = useRef<View>(null);
   const [decisionVisible, setDecisionVisible] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   // ── Handlers ───────────────────────────────────────────────────
 
@@ -115,7 +117,9 @@ export default function KaisekiScreen() {
   async function handleTakePhoto() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("権限が必要です", "カメラへのアクセスを許可してください。", [], { cancelable: true });
+      Alert.alert(t("permissionRequired"), t("cameraPermissionRequired"), [], {
+        cancelable: true,
+      });
       return;
     }
 
@@ -146,7 +150,9 @@ export default function KaisekiScreen() {
         setImageDataUrl(dataUrl);
       }
     } catch {
-      Alert.alert("エラー", "画像の読み込みに失敗しました。", [], { cancelable: true });
+      Alert.alert(t("error"), t("imageLoadFailed"), [], {
+        cancelable: true,
+      });
       setImageUri(null);
       setAnalysisStatus("idle");
     }
@@ -155,12 +161,9 @@ export default function KaisekiScreen() {
   async function handlePickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        "権限が必要です",
-        "写真ライブラリへのアクセスを許可してください。",
-        [],
-        { cancelable: true }
-      );
+      Alert.alert(t("permissionRequired"), t("libraryPermissionRequired"), [], {
+        cancelable: true,
+      });
       return;
     }
 
@@ -192,7 +195,9 @@ export default function KaisekiScreen() {
         setImageDataUrl(dataUrl);
       }
     } catch {
-      Alert.alert("エラー", "画像の読み込みに失敗しました。", [], { cancelable: true });
+      Alert.alert(t("error"), t("imageLoadFailed"), [], {
+        cancelable: true,
+      });
       setImageUri(null);
       setAnalysisStatus("idle");
     }
@@ -211,31 +216,36 @@ export default function KaisekiScreen() {
       const response = await analyzeNaturePhoto(
         selectedCategory,
         imageDataUrl,
-        "ja",
+        language,
       );
       setCandidates(response.results);
       setAnalysisStatus("success");
 
       if (response.results.length === 0) {
         setAnalysisMessage(
-          "候補が見つかりませんでした。別カテゴリや別の写真で試してみてください。",
+          t('noCandidatesFound'),
         );
       }
     } catch (error) {
       setAnalysisStatus("error");
-
       if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
         Alert.alert(
-          "🔑 トークンの有効期限が切れました",
-          "iNaturalistのトークンは約60日で有効期限が切れます。新しいトークンを取得して再度設定してください。",
+          t("tokenExpired"),
+          t("tokenExpiredMessage"),
           [
-            { text: "📖 手順を見る", onPress: () => router.push("/modal") },
-            { text: " 新しいトークンを取得", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
-            { text: " トークンを入力", onPress: () => setShowTokenInput(true) },
+            { text: t("readDetails"), onPress: () => router.push("/modal") },
+            {
+              text: t("getToken"),
+              onPress: () =>
+                Linking.openURL("https://www.inaturalist.org/users/api_token"),
+            },
+            { text: t("enterToken"), onPress: () => setShowTokenInput(true) },
           ],
-          { cancelable: true }
+          { cancelable: true },
         );
-        setAnalysisMessage("トークンの有効期限が切れました。再度設定してください。");
+        setAnalysisMessage(
+          t('tokenExpiredRetry'),
+        );
         return;
       }
 
@@ -244,13 +254,13 @@ export default function KaisekiScreen() {
         error.message.includes("Error scoring image")
       ) {
         setAnalysisMessage(
-          "アップロードされた画像のファイル形式に対応していません。JPG, PNG 形式の画像でお試しください。",
+          t('unsupportedImageFormat'),
         );
       } else {
         setAnalysisMessage(
           error instanceof Error
             ? error.message
-            : "解析中にエラーが発生しました。",
+            : t('analysisError'),
         );
       }
     }
@@ -280,8 +290,25 @@ export default function KaisekiScreen() {
       taxonomy: candidate.taxonomy,
     });
 
+    if (newEntry === null) {
+      Alert.alert(
+        t("freeLimitAlertTitle"),
+        t("freeLimitAlertMessage"),
+        [{ text: t("later"), style: "cancel" }, { text: t("upgradePremium") }],
+        { cancelable: true },
+      );
+      setCurrentDecision(null);
+      setConfirmedCandidateId(null);
+      return;
+    }
+
     // 保存したエントリーIDを記録
     setSavedEntryId(newEntry.id);
+
+    // トースト通知を表示
+    setToastMessage(t("recordSaved"));
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2500);
   }
 
   function handleRejectAll() {
@@ -305,8 +332,24 @@ export default function KaisekiScreen() {
       chatHistory: [],
     });
 
+    if (newEntry === null) {
+      Alert.alert(
+        t("freeLimitAlertTitle"),
+        t("freeLimitAlertMessage"),
+        [{ text: t("later"), style: "cancel" }, { text: t("upgradePremium") }],
+        { cancelable: true },
+      );
+      setCurrentDecision(null);
+      return;
+    }
+
     // 保存したエントリーIDを記録
     setSavedEntryId(newEntry.id);
+
+    // トースト通知を表示
+    setToastMessage(t("recordSaved"));
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2500);
   }
 
   function handleReset() {
@@ -348,43 +391,51 @@ export default function KaisekiScreen() {
 
   // アプリがバックグラウンドから復帰した時にクリップボードを自動検知
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active' &&
-        showTokenInput
-      ) {
-        // アプリが復帰した & トークン入力モーダルが開いている
-        const hasText = await Clipboard.hasStringAsync();
-        if (hasText) {
-          const text = await Clipboard.getStringAsync();
-          // JWTトークンのパターンを検知 (eyJ で始まるもの)
-          if (text.trim().startsWith('eyJ') && text.length > 100) {
-            setTokenInputValue(text.trim());
-            // 自動的に保存しても良いか確認
-            Alert.alert(
-              "トークンを検知しました！",
-              "クリップボードにiNaturalistトークンがあります。自動的に設定しますか？",
-              [
-                { text: "いいえ", style: "cancel" },
-                { 
-                  text: "はい、設定する", 
-                  onPress: async () => {
-                    await setInaturalistToken(text.trim());
-                    setShowTokenInput(false);
-                    setTokenInputValue("");
-                    Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。", [], { cancelable: true });
-                  }
-                }
-              ],
-              { cancelable: true }
-            );
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextAppState) => {
+        if (
+          appState.current.match(/inactive|background/) &&
+          nextAppState === "active" &&
+          showTokenInput
+        ) {
+          // アプリが復帰した & トークン入力モーダルが開いている
+          const hasText = await Clipboard.hasStringAsync();
+          if (hasText) {
+            const text = await Clipboard.getStringAsync();
+            // JWTトークンのパターンを検知 (eyJ で始まるもの)
+            if (text.trim().startsWith("eyJ") && text.length > 100) {
+              setTokenInputValue(text.trim());
+              // 自動的に保存しても良いか確認
+              Alert.alert(
+                t("tokenDetected"),
+                "クリップボードにiNaturalistトークンがあります。自動的に設定しますか？",
+                [
+                  { text: "いいえ", style: "cancel" },
+                  {
+                    text: "はい、設定する",
+                    onPress: async () => {
+                      await setInaturalistToken(text.trim());
+                      setShowTokenInput(false);
+                      setTokenInputValue("");
+                      Alert.alert(
+                        t("setupComplete"),
+                        "トークンを保存しました。もう一度解析ボタンを押してください。",
+                        [],
+                        { cancelable: true },
+                      );
+                    },
+                  },
+                ],
+                { cancelable: true },
+              );
+            }
           }
         }
-      }
-      
-      appState.current = nextAppState;
-    });
+
+        appState.current = nextAppState;
+      },
+    );
 
     return () => subscription.remove();
   }, [showTokenInput]);
@@ -449,11 +500,21 @@ export default function KaisekiScreen() {
         onScroll: handleScroll,
         scrollEventThrottle: 16,
       }}
+      fixedOverlay={
+        /* Toast 通知 (画面固定・スクロール追従) */
+        toastVisible && (
+          <Animated.View style={styles.toastContainer}>
+            <View style={styles.toast}>
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+          </Animated.View>
+        )
+      }
     >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Text style={styles.backText}>← 戻る</Text>
+          <Text style={styles.backText}>← {t("back")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -463,7 +524,7 @@ export default function KaisekiScreen() {
         <View style={styles.sectionStringRight} />
         <View style={styles.sectionNailLeft} />
         <View style={styles.sectionNailRight} />
-        <Text style={styles.sectionTitle}>何と出会った？</Text>
+        <Text style={styles.sectionTitle}>{t("whatDidYouFind")}</Text>
         <View style={styles.categoryGrid}>
           {categories.map((cat) => (
             <TouchableOpacity
@@ -482,7 +543,7 @@ export default function KaisekiScreen() {
                   selectedCategory === cat.id && styles.categoryNameSelected,
                 ]}
               >
-                {cat.name}
+                {t(`category.${cat.id}`)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -497,18 +558,26 @@ export default function KaisekiScreen() {
             <View style={styles.sectionStringRight} />
             <View style={styles.sectionNailLeft} />
             <View style={styles.sectionNailRight} />
-            <Text style={styles.sectionTitle}>写真をアップロード</Text>
+            <Text style={styles.sectionTitle}>{t("uploadPhoto")}</Text>
 
             {imageUri && (
               <TouchableOpacity
                 style={styles.previewFrame}
                 activeOpacity={0.8}
                 onPress={() => {
-                  Alert.alert("写真を変更", "選択してください", [
-                    { text: "📷 カメラで撮影", onPress: handleTakePhoto },
-                    { text: "📂 ライブラリから選ぶ", onPress: handlePickImage },
-                    { text: "キャンセル", style: "cancel" },
-                  ], { cancelable: true });
+                  Alert.alert(
+                    t("changePhoto"),
+                    t("selectOption"),
+                    [
+                      { text: t("takePhoto"), onPress: handleTakePhoto },
+                      {
+                        text: t("pickFromLibrary"),
+                        onPress: handlePickImage,
+                      },
+                      { text: t("cancel"), style: "cancel" },
+                    ],
+                    { cancelable: true },
+                  );
                 }}
               >
                 <Image
@@ -527,7 +596,7 @@ export default function KaisekiScreen() {
                   onPress={handlePickImage}
                 >
                   <Text style={styles.uploadButtonText}>
-                    📂 写真ライブラリから選ぶ
+                    {t("pickFromLibrary")}
                   </Text>
                 </TouchableOpacity>
 
@@ -536,9 +605,7 @@ export default function KaisekiScreen() {
                   activeOpacity={0.8}
                   onPress={handleTakePhoto}
                 >
-                  <Text style={styles.uploadButtonText}>
-                    📸 カメラで撮影する
-                  </Text>
+                  <Text style={styles.uploadButtonText}>{t("takePhoto")}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -555,15 +622,15 @@ export default function KaisekiScreen() {
               {analysisStatus === "loading" ? (
                 <View style={styles.loadingRow}>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.analyzeButtonText}>
-                    iNaturalist へ問い合わせ中…
-                  </Text>
+                  <Text style={styles.analyzeButtonText}>{t("analyzing")}</Text>
                 </View>
               ) : (
                 <Text style={styles.analyzeButtonText}>
                   {!imageDataUrl
-                    ? "画像を選ぶと解析できます"
-                    : `${selectedCategoryMeta?.name ?? ""}として候補を出す`}
+                    ? t("selectImageToAnalyze")
+                    : t("analyzeAs", {
+                        category: t(`category.${selectedCategory}`),
+                      })}
                 </Text>
               )}
             </TouchableOpacity>
@@ -576,9 +643,7 @@ export default function KaisekiScreen() {
         <AnimatedSection id="loading" delay={180}>
           <View style={styles.statusPanel}>
             <ActivityIndicator color="#2D6A4F" size="large" />
-            <Text style={styles.statusText}>
-              画像を送信し、推論結果を取得しています…
-            </Text>
+            <Text style={styles.statusText}>{t("uploadingImage")}</Text>
           </View>
         </AnimatedSection>
       )}
@@ -599,7 +664,7 @@ export default function KaisekiScreen() {
             <View style={styles.sectionStringRight} />
             <View style={styles.sectionNailLeft} />
             <View style={styles.sectionNailRight} />
-            <Text style={styles.sectionTitle}>候補</Text>
+            <Text style={styles.sectionTitle}>{t("candidates")}</Text>
 
             {candidates.length === 0 ? (
               <View style={styles.emptyState}>
@@ -671,13 +736,25 @@ export default function KaisekiScreen() {
                         {/* 詳細へのリンク */}
                         <TouchableOpacity
                           style={styles.linkButton}
-                          onPress={() =>
-                            Linking.openURL(candidate.referenceUrl)
-                          }
+                          onPress={() => {
+                            Alert.alert(
+                              t("openInaturalist"),
+                              t("externalLinkConfirm"),
+                              [
+                                { text: t("cancel"), style: "cancel" },
+                                {
+                                  text: t("openInaturalist"),
+                                  onPress: () =>
+                                    Linking.openURL(candidate.referenceUrl),
+                                },
+                              ],
+                              { cancelable: true },
+                            );
+                          }}
                           activeOpacity={0.7}
                         >
                           <Text style={styles.linkButtonText}>
-                            詳細を見る →
+                            {t("viewDetails")}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -710,8 +787,8 @@ export default function KaisekiScreen() {
               <View style={styles.decisionPanel}>
                 <Text style={styles.decisionTitle}>
                   {currentDecision === "confirmed"
-                    ? "あなたに、よりよい自然の出会いを 🌿"
-                    : "すみません…私に新たな発見をありがとう！"}
+                    ? t("analysisCompleteMessage")
+                    : t("analysisRejectedMessage")}
                 </Text>
 
                 <View style={styles.decisionActions}>
@@ -720,7 +797,9 @@ export default function KaisekiScreen() {
                     activeOpacity={0.85}
                     onPress={() => router.push("/zukan")}
                   >
-                    <Text style={styles.primaryActionText}>図鑑を開く</Text>
+                    <Text style={styles.primaryActionText}>
+                      {t("openGuide")}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -729,7 +808,7 @@ export default function KaisekiScreen() {
                     onPress={handleReset}
                   >
                     <Text style={styles.secondaryActionText}>
-                      別の解析を行う
+                      {t("startNewAnalysis")}
                     </Text>
                   </TouchableOpacity>
 
@@ -738,7 +817,9 @@ export default function KaisekiScreen() {
                     activeOpacity={0.85}
                     onPress={() => router.back()}
                   >
-                    <Text style={styles.secondaryActionText}>ホームに戻る</Text>
+                    <Text style={styles.secondaryActionText}>
+                      {t("goHome")}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -754,16 +835,14 @@ export default function KaisekiScreen() {
       {showTokenInput && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>APIトークンを設定</Text>
-            <Text style={styles.modalDescription}>
-              iNaturalistから取得したJWTトークンを貼り付けてください
-            </Text>
+            <Text style={styles.modalTitle}>{t("setApiToken")}</Text>
+            <Text style={styles.modalDescription}>{t("tokenDescription")}</Text>
 
             <TextInput
               style={styles.tokenInput}
               value={tokenInputValue}
               onChangeText={setTokenInputValue}
-              placeholder="JWT トークンをここに貼り付け"
+              placeholder={t("tokenPlaceholder")}
               autoCapitalize="none"
               autoCorrect={false}
               multiline
@@ -775,7 +854,7 @@ export default function KaisekiScreen() {
                 style={styles.modalCancelButton}
                 onPress={() => setShowTokenInput(false)}
               >
-                <Text style={styles.modalCancelText}>キャンセル</Text>
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -785,11 +864,16 @@ export default function KaisekiScreen() {
                     await setInaturalistToken(tokenInputValue.trim());
                     setShowTokenInput(false);
                     setTokenInputValue("");
-                     Alert.alert("設定完了", "トークンを保存しました。もう一度解析ボタンを押してください。", [], { cancelable: true });
+                    Alert.alert(
+                      t("setupComplete"),
+                      t('tokenSaved'),
+                      [],
+                      { cancelable: true },
+                    );
                   }
                 }}
               >
-                <Text style={styles.modalSaveText}>保存</Text>
+                <Text style={styles.modalSaveText}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1276,6 +1360,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalSaveText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+
+  // Toast Styles
+  toastContainer: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
+  toast: {
+    backgroundColor: "rgba(59, 130, 246, 0.92)",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastText: {
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 15,

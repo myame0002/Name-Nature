@@ -1,4 +1,5 @@
 import { type GuideEntry, updateGuideEntry } from "@/lib/api";
+import { useLanguage } from '@/context/LanguageContext';
 import { Image } from "expo-image";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ScrollView,
   Animated,
   Easing,
   Dimensions,
@@ -18,12 +20,7 @@ import {
 } from "react-native";
 
 
-const categoryLabel: Record<string, string> = {
-  flower: "🌸 花",
-  fungus: "🍄 菌類",
-  bird: "🐦 鳥",
-  insect: "🦋 昆虫",
-};
+
 
 type GuideEntryDetailProps = {
   entry: GuideEntry;
@@ -48,6 +45,7 @@ export function GuideEntryDetail({
   onBackToList,
   onEntryUpdated,
 }: GuideEntryDetailProps) {
+  const { t } = useLanguage();
   const [isImageFullscreen, setIsImageFullscreen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editValues, setEditValues] = useState({
@@ -137,10 +135,10 @@ export function GuideEntryDetail({
   };
 
   const handleReset = () => {
-    Alert.alert("リセットの確認", "編集内容を元の情報に戻しますか？", [
-      { text: "キャンセル", style: "cancel" },
+    Alert.alert(t('resetConfirm'), t('resetConfirmMessage'), [
+      { text: t('cancel'), style: "cancel" },
       {
-        text: "リセット",
+        text: t('reset'),
         style: "destructive",
         onPress: () => {
           setEditValues({
@@ -173,51 +171,52 @@ export function GuideEntryDetail({
 
   return (
     <>
-      <View style={styles.topRow}>
-        <TouchableOpacity
-          style={styles.backToListButton}
-          onPress={onBackToList}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backToListText}>← 一覧に戻る</Text>
-        </TouchableOpacity>
-
-        {!isEditMode ? (
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.topRow}>
           <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => setIsEditMode(true)}
+            style={styles.backToListButton}
+            onPress={onBackToList}
             activeOpacity={0.7}
           >
-            <Text style={styles.editButtonText}>✎ 編集</Text>
+            <Text style={styles.backToListText}>← {t('backToList')}</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={styles.editActionsRow}>
-            <TouchableOpacity
-              style={styles.resetIconButton}
-              onPress={handleReset}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.resetIconText}>↺</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={handleCancel}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelButtonText}>キャンセル</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.saveButtonText}>保存</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
 
-      <View style={styles.detailContainer}>
+          {!isEditMode ? (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setIsEditMode(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.editButtonText}>✎ {t('edit')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.editActionsRow}>
+              <TouchableOpacity
+                style={styles.resetIconButton}
+                onPress={handleReset}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.resetIconText}>↺</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCancel}
+                activeOpacity={0.7}
+              >
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSave}
+                activeOpacity={0.7}
+              >
+              <Text style={styles.saveButtonText}>{t('save')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.detailContainer}>
         <Animated.View style={[styles.mainCard, {
           opacity: animMainCard,
           transform: [{ translateY: animMainCard.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }]
@@ -273,7 +272,10 @@ export function GuideEntryDetail({
               />
             ) : (
               <Text style={styles.detailMeta}>
-                {categoryLabel[entry.category]} | {entry.observedAt}
+                {entry.category === 'flower' ? `🌸 ${t('category.flower')}` :
+                 entry.category === 'fungus' ? `🍄 ${t('category.fungus')}` :
+                 entry.category === 'bird' ? `🐦 ${t('category.bird')}` :
+                 entry.category === 'insect' ? `🦋 ${t('category.insect')}` : ''} | {entry.observedAt}
               </Text>
             )}
           </View>
@@ -287,10 +289,10 @@ export function GuideEntryDetail({
           <View style={styles.sectionStringRight} />
           <View style={styles.sectionNailLeft} />
           <View style={styles.sectionNailRight} />
-          <Text style={styles.sectionTitle}>分類情報</Text>
+          <Text style={styles.sectionTitle}>{t('taxonomy')}</Text>
           <View style={styles.taxonomyGrid}>
             <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>界</Text>
+              <Text style={styles.taxonomyLabel}>{t('taxonomy.kingdom')}</Text>
               {isEditMode ? (
                 <TextInput
                   style={styles.taxonomyEditInput}
@@ -304,7 +306,7 @@ export function GuideEntryDetail({
               )}
             </View>
             <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>門</Text>
+              <Text style={styles.taxonomyLabel}>{t('taxonomy.phylum')}</Text>
               {isEditMode ? (
                 <TextInput
                   style={styles.taxonomyEditInput}
@@ -318,7 +320,7 @@ export function GuideEntryDetail({
               )}
             </View>
             <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>綱</Text>
+              <Text style={styles.taxonomyLabel}>{t('taxonomy.class')}</Text>
               {isEditMode ? (
                 <TextInput
                   style={styles.taxonomyEditInput}
@@ -332,7 +334,7 @@ export function GuideEntryDetail({
               )}
             </View>
             <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>目</Text>
+              <Text style={styles.taxonomyLabel}>{t('taxonomy.order')}</Text>
               {isEditMode ? (
                 <TextInput
                   style={styles.taxonomyEditInput}
@@ -346,7 +348,7 @@ export function GuideEntryDetail({
               )}
             </View>
             <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>科</Text>
+              <Text style={styles.taxonomyLabel}>{t('taxonomy.family')}</Text>
               {isEditMode ? (
                 <TextInput
                   style={styles.taxonomyEditInput}
@@ -370,7 +372,7 @@ export function GuideEntryDetail({
           <View style={styles.sectionStringRight} />
           <View style={styles.sectionNailLeft} />
           <View style={styles.sectionNailRight} />
-          <Text style={styles.sectionTitle}>メモ</Text>
+          <Text style={styles.sectionTitle}>{t('note')}</Text>
           <TextInput
             style={styles.noteInput}
             value={editValues.note}
@@ -378,7 +380,7 @@ export function GuideEntryDetail({
               setEditValues((prev) => ({ ...prev, note: value }))
             }
             multiline
-            placeholder="メモを入力してください..."
+            placeholder={t('notePlaceholder')}
             onBlur={() => {
               if (editValues.note !== entry.note) {
                 updateGuideEntry(entry.id, { note: editValues.note });
@@ -387,8 +389,8 @@ export function GuideEntryDetail({
             }}
           />
         </Animated.View>
-
-      </View>
+        </View>
+      </ScrollView>
 
       {/* フルスクリーン画像モーダル */}
       <Modal
@@ -485,6 +487,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    paddingTop: 0,
   },
   detailContainer: {
     gap: 5.5,

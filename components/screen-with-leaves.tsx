@@ -13,7 +13,8 @@ export function ScreenWithLeaves({
   scrollViewProps,
   leavesProps,
   noScroll = false,
-}: ScreenWithLeavesProps) {
+  fixedOverlay,
+}: ScreenWithLeavesProps & { fixedOverlay?: React.ReactNode }) {
   return (
     <View style={styles.wrapper}>
       <FallingLeaves {...leavesProps} />
@@ -24,6 +25,10 @@ export function ScreenWithLeaves({
         <ScrollView style={styles.contentLayer} {...scrollViewProps}>
           {children}
         </ScrollView>
+      )}
+
+      {fixedOverlay && (
+        <View style={styles.fixedOverlay}>{fixedOverlay}</View>
       )}
     </View>
   );
@@ -39,5 +44,12 @@ const styles = StyleSheet.create({
   contentLayer: {
     flex: 1,
     zIndex: 10,
+  },
+  fixedOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
   },
 });

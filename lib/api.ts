@@ -200,6 +200,38 @@ export type GuideEntry = {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
+// 有料制限設定
+export const FREE_ENTRY_LIMIT = 10;
+export let IS_PREMIUM_USER = false;
+const PREMIUM_STORAGE_KEY = "premium_purchased";
+
+export function setPremiumUser(enabled: boolean) {
+  IS_PREMIUM_USER = enabled;
+  if (Platform.OS === "web") {
+    localStorage.setItem(PREMIUM_STORAGE_KEY, enabled ? "true" : "false");
+  } else {
+    AsyncStorage.setItem(PREMIUM_STORAGE_KEY, enabled ? "true" : "false");
+  }
+}
+
+export function isPremiumUser(): boolean {
+  return IS_PREMIUM_USER;
+}
+
+export async function loadPremiumStatus() {
+  try {
+    let stored: string | null = null;
+    if (Platform.OS === "web") {
+      stored = localStorage.getItem(PREMIUM_STORAGE_KEY);
+    } else {
+      stored = await AsyncStorage.getItem(PREMIUM_STORAGE_KEY);
+    }
+    IS_PREMIUM_USER = stored === "true";
+  } catch (e) {
+    IS_PREMIUM_USER = false;
+  }
+}
+
 let guideEntriesStorage: GuideEntry[] = [];
 
 // プラットフォームに応じたストレージからデータを読み込み
@@ -261,7 +293,12 @@ export function getGuideEntries(): GuideEntry[] {
 
 export function addGuideEntry(
   entry: Omit<GuideEntry, "id" | "observedAt">,
-): GuideEntry {
+): GuideEntry | null {
+  // 無料ユーザーは10件まで制限
+  if (!IS_PREMIUM_USER && guideEntriesStorage.length >= FREE_ENTRY_LIMIT) {
+    return null;
+  }
+
   const newEntry: GuideEntry = {
     ...entry,
     id: `entry-${Date.now()}`,
@@ -270,6 +307,15 @@ export function addGuideEntry(
   guideEntriesStorage.push(newEntry);
   saveToStorage();
   return newEntry;
+}
+
+export function canAddMoreEntries(): boolean {
+  return IS_PREMIUM_USER || guideEntriesStorage.length < FREE_ENTRY_LIMIT;
+}
+
+export function getRemainingEntries(): number {
+  if (IS_PREMIUM_USER) return Infinity;
+  return Math.max(0, FREE_ENTRY_LIMIT - guideEntriesStorage.length);
 }
 
 export function deleteGuideEntry(entryId: string): boolean {
@@ -348,7 +394,12 @@ export function getCustomCategories(): CustomCategory[] {
   return [...customCategoriesStorage];
 }
 
-export function addCustomCategory(category: Omit<CustomCategory, "id">): CustomCategory {
+export function addCustomCategory(category: Omit<CustomCategory, "id">): CustomCategory | null {
+  // オリジナルしおりは有料会員のみ
+  if (!IS_PREMIUM_USER) {
+    return null;
+  }
+
   const newCategory: CustomCategory = {
     ...category,
     id: `custom-${Date.now()}`,

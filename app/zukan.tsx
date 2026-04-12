@@ -4,8 +4,9 @@ import {
   deleteGuideEntries,
   getCustomCategories,
   getGuideEntries,
+  isPremiumUser,
   waitForStorageLoad,
-  type GuideEntry,
+  type GuideEntry
 } from "@/lib/api";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -24,12 +25,13 @@ import {
 
 import { GuideEntryCard } from "@/components/zukan/GuideEntryCard";
 import { GuideEntryDetail } from "@/components/zukan/GuideEntryDetail";
+import { useLanguage } from "@/context/LanguageContext";
 
 const categoryLabel: Record<string, string> = {
-  flower: "🌸 花",
-  fungus: "🍄 菌類",
-  bird: "🐦 鳥",
-  insect: "🦋 昆虫",
+  flower: `🌸 ${"category.flower"}`,
+  fungus: `🍄 ${"category.fungus"}`,
+  bird: `🐦 ${"category.bird"}`,
+  insect: `🦋 ${"category.insect"}`,
 };
 
 const categoryColor: Record<string, string> = {
@@ -53,6 +55,7 @@ type CategoryFilter = "all" | "flower" | "fungus" | "bird" | "insect";
 
 export default function ZukanScreen() {
   const router = useRouter();
+  const { t, language } = useLanguage();
 
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter>("all");
@@ -131,6 +134,12 @@ export default function ZukanScreen() {
       await waitForStorageLoad();
       loadEntries();
 
+      // 言語に応じたカテゴリ名を設定
+      categoryLabel["flower"] = `🌸 ${t("category.flower")}`;
+      categoryLabel["fungus"] = `🍄 ${t("category.fungus")}`;
+      categoryLabel["bird"] = `🐦 ${t("category.bird")}`;
+      categoryLabel["insect"] = `🦋 ${t("category.insect")}`;
+
       // 保存されているカスタムカテゴリを読み込み
       const savedCategories = getCustomCategories();
       savedCategories.forEach((cat) => {
@@ -143,7 +152,7 @@ export default function ZukanScreen() {
       setSelectedCategory(selectedCategory);
     }
     init();
-  }, []);
+  }, [language]);
 
   // 画面に戻ってきた時に再読み込み（ナビゲーションイベント）
   useEffect(() => {
@@ -248,12 +257,12 @@ export default function ZukanScreen() {
     if (selectedEntryIds.size === 0) return;
 
     Alert.alert(
-      "削除の確認",
-      `選択した ${selectedEntryIds.size} 件のデータを完全に削除しますか？\nこの操作は取り消すことができません。`,
+      t("confirmDelete"),
+      t("deleteSelectedConfirm", { count: String(selectedEntryIds.size) }),
       [
-        { text: "キャンセル", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: "削除する",
+          text: t("delete"),
           style: "destructive",
           onPress: () => {
             const deleteCount = deleteGuideEntries(
@@ -262,7 +271,7 @@ export default function ZukanScreen() {
             setSelectedEntryIds(new Set());
             setIsEditMode(false);
             loadEntries();
-            Alert.alert("完了", `${deleteCount} 件の記録を削除しました`, [], {
+            Alert.alert(t('deleteComplete'), t('entriesDeleted', { count: String(deleteCount) }), [], {
               cancelable: true,
             });
           },
@@ -276,16 +285,16 @@ export default function ZukanScreen() {
     setTargetCategoryId(categoryId);
     setSelectedCategory("all");
     setIsCategoryEditMode(true);
-    
+
     // 最初からそのカテゴリに含まれている記録を選択状態にする
     const initialSelected = new Set<string>();
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       if (entry.category === categoryId) {
         initialSelected.add(entry.id);
       }
     });
     setSelectedEntryIds(initialSelected);
-    
+
     setShowAddCategoryModal(false);
     setShowEditCategoryModal(false);
   };
@@ -579,271 +588,295 @@ export default function ZukanScreen() {
 
       <View style={styles.container}>
         <View style={styles.content}>
-        {/* 本ののりしろは一覧モードのみ表示 */}
-        {viewMode === "list" && <View style={styles.bookBinding} />}
-        {/* ヘッダー: 戻るボタン + アクションボタン */}
-        <View
-          style={[
-            styles.topHeaderRow,
-            viewMode === "detail" && styles.topHeaderRowDetail,
-          ]}
-        >
-          {viewMode === "list" && (
-            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-              <Text style={styles.backText}>← 戻る</Text>
-            </TouchableOpacity>
-          )}
+          {/* 本ののりしろは一覧モードのみ表示 */}
+          {viewMode === "list" && <View style={styles.bookBinding} />}
+          {/* ヘッダー: 戻るボタン + アクションボタン */}
+          <View
+            style={[
+              styles.topHeaderRow,
+              viewMode === "detail" && styles.topHeaderRowDetail,
+            ]}
+          >
+            {viewMode === "list" && (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.backText}>← {t("back")}</Text>
+              </TouchableOpacity>
+            )}
 
-          {viewMode === "list" && (
-            <View style={styles.actionButtonsRight}>
-              {isCategoryEditMode ? (
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={handleCompleteCategoryEdit}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.editButtonText}>✓ 完了</Text>
-                </TouchableOpacity>
-              ) : !isEditMode ? (
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={handleToggleEditMode}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.editButtonText}>✎ 編集</Text>
-                </TouchableOpacity>
-              ) : (
-                <>
+            {viewMode === "list" && (
+              <View style={styles.actionButtonsRight}>
+                {isCategoryEditMode ? (
                   <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={handleSelectAll}
+                    style={styles.editButton}
+                    onPress={handleCompleteCategoryEdit}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.actionButtonText}>
-                      {selectedEntryIds.size === filteredEntries.length
-                        ? "選択解除"
-                        : "全て選択"}
-                    </Text>
+                  <Text style={styles.editButtonText}>✓ {t('done')}</Text>
                   </TouchableOpacity>
-
+                ) : !isEditMode ? (
                   <TouchableOpacity
                     style={styles.editButton}
                     onPress={handleToggleEditMode}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.editButtonText}>✓ 完了</Text>
+                  <Text style={styles.editButtonText}>✎ {t('edit')}</Text>
                   </TouchableOpacity>
-
-                  {selectedEntryIds.size > 0 && (
+                ) : (
+                  <>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.deleteButton]}
+                      style={styles.actionButton}
+                      onPress={handleSelectAll}
                       activeOpacity={0.7}
-                      onPress={handleDeleteSelected}
                     >
-                      <Text
-                        style={[
-                          styles.actionButtonText,
-                          styles.deleteButtonText,
-                        ]}
-                      >
-                        削除 ({selectedEntryIds.size})
-                      </Text>
+                    <Text style={styles.actionButtonText}>
+                      {selectedEntryIds.size === filteredEntries.length
+                        ? t('deselectAll')
+                        : t('selectAll')}
+                    </Text>
                     </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </View>
-          )}
-        </View>
 
-        {viewMode === "list" ? (
-          <View {...panResponder.panHandlers}>
-            {/* カテゴリタブ */}
-            {selectedCategory.startsWith("custom-") && !isEditMode && (
-              <View style={styles.editHintBar}>
-                <Text style={styles.editHintText}>
-                  オリジナルしおりを長押しで編集
-                </Text>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={handleToggleEditMode}
+                      activeOpacity={0.7}
+                    >
+                    <Text style={styles.editButtonText}>✓ {t('done')}</Text>
+                    </TouchableOpacity>
+
+                    {selectedEntryIds.size > 0 && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.deleteButton]}
+                        activeOpacity={0.7}
+                        onPress={handleDeleteSelected}
+                      >
+                        <Text
+                          style={[
+                            styles.actionButtonText,
+                            styles.deleteButtonText,
+                          ]}
+                        >
+                          削除 ({selectedEntryIds.size})
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
               </View>
             )}
+          </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.tabsContainer}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  {
-                    backgroundColor:
-                      selectedCategory === "all"
-                        ? categoryColorActive["all"]
-                        : categoryColor["all"],
-                  },
-                  selectedCategory === "all" && styles.tabButtonActive,
-                ]}
-                onPress={() => setSelectedCategory("all")}
-                activeOpacity={0.7}
+          {viewMode === "list" ? (
+            <View {...panResponder.panHandlers}>
+              {/* カテゴリタブ */}
+              {selectedCategory.startsWith("custom-") && !isEditMode && (
+                <View style={styles.editHintBar}>
+                  <Text style={styles.editHintText}>
+                    オリジナルしおりを長押しで編集
+                  </Text>
+                </View>
+              )}
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.tabsContainer}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    selectedCategory === "all" && styles.tabTextActive,
-                  ]}
-                >
-                  全て
-                </Text>
-              </TouchableOpacity>
-
-              {Object.entries(categoryLabel).map(([key, label]) => (
                 <TouchableOpacity
-                  key={key}
                   style={[
                     styles.tabButton,
                     {
                       backgroundColor:
-                        selectedCategory === key
-                          ? categoryColorActive[key]
-                          : categoryColor[key],
+                        selectedCategory === "all"
+                          ? categoryColorActive["all"]
+                          : categoryColor["all"],
                     },
-                    selectedCategory === key && styles.tabButtonActive,
+                    selectedCategory === "all" && styles.tabButtonActive,
                   ]}
-                  onPress={() => setSelectedCategory(key as CategoryFilter)}
-                  onLongPress={() => {
-                    // カスタムカテゴリのみ編集可能
-                    if (key.startsWith("custom-")) {
-                      setEditingCategoryId(key);
-                      setNewCategoryName(label);
-                      const colorIndex = categoryColorOptions.indexOf(
-                        categoryColor[key],
-                      );
-                      setSelectedColorIndex(colorIndex >= 0 ? colorIndex : 0);
-                      setShowEditCategoryModal(true);
-                    }
-                  }}
+                  onPress={() => setSelectedCategory("all")}
                   activeOpacity={0.7}
-                  delayLongPress={300}
                 >
                   <Text
                     style={[
                       styles.tabText,
-                      selectedCategory === key && styles.tabTextActive,
+                      selectedCategory === "all" && styles.tabTextActive,
                     ]}
                   >
-                    {label}
+                    {t("all")}
                   </Text>
                 </TouchableOpacity>
-              ))}
 
-              {/* カテゴリ追加ボタン */}
-              <TouchableOpacity
-                style={[styles.tabButton, styles.addTabButton]}
-                onPress={() => setShowAddCategoryModal(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.addTabText}>+</Text>
-              </TouchableOpacity>
+                {Object.entries(categoryLabel).map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.tabButton,
+                      {
+                        backgroundColor:
+                          selectedCategory === key
+                            ? categoryColorActive[key]
+                            : categoryColor[key],
+                      },
+                      selectedCategory === key && styles.tabButtonActive,
+                    ]}
+                    onPress={() => setSelectedCategory(key as CategoryFilter)}
+                    onLongPress={() => {
+                      // カスタムカテゴリのみ編集可能
+                      if (key.startsWith("custom-")) {
+                        setEditingCategoryId(key);
+                        setNewCategoryName(label);
+                        const colorIndex = categoryColorOptions.indexOf(
+                          categoryColor[key],
+                        );
+                        setSelectedColorIndex(colorIndex >= 0 ? colorIndex : 0);
+                        setShowEditCategoryModal(true);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                    delayLongPress={300}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        selectedCategory === key && styles.tabTextActive,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
 
-              {/* 右端余白 */}
-              <View style={{ width: 10 }} />
-            </ScrollView>
+                {/* カテゴリ追加ボタン */}
+                {isPremiumUser() ? (
+                  <TouchableOpacity
+                    style={[styles.tabButton, styles.addTabButton]}
+                    onPress={() => setShowAddCategoryModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.addTabText}>+</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.tabButton, styles.addTabButton]}
+                    onPress={() => {
+                      Alert.alert(
+                        "完全版機能",
+                        "オリジナルしおりの作成は完全版の機能となります。\n購入すると無制限に作成できます。\n\n完全版で追加される機能:\n- 図鑑を無制限に保存可能\n- オリジナルしおりの作成\n\n以後アップデートによる追加機能を予定しています！",
+                        [
+                          { text: "後で", style: "cancel" },
+                          { text: "完全版にアップグレード" },
+                        ],
+                      );
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.addTabText}>+ 🔒</Text>
+                  </TouchableOpacity>
+                )}
 
-            {/* Entry List */}
-            <Animated.View
-              style={[
-                styles.grid,
-                {
-                  opacity: pageFlipAnim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [1, 0.8, 1],
-                  }),
-                  transform: [
-                    {
-                      translateX: pageFlipAnim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0, 15, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {pageEntries.map((entry, index) => {
-                // 全体での番号（古いものから連番）
-                const totalIndex = entries.findIndex((e) => e.id === entry.id);
-                const number = entries.length - totalIndex;
+                {/* 右端余白 */}
+                <View style={{ width: 10 }} />
+              </ScrollView>
 
-                return (
-                  <View key={entry.id} style={styles.gridItem}>
-                    <GuideEntryCard
-                      entry={entry}
-                      entryNumber={number}
-                      isSelected={selectedEntryIds.has(entry.id)}
-                  isEditMode={isEditMode || isCategoryEditMode}
-                      onPress={() => handleEntryClick(entry)}
-                    />
-                  </View>
-                );
-              })}
-            </Animated.View>
-
-            {/* ページネーション */}
-            <View style={styles.paginationRow}>
-              <TouchableOpacity
+              {/* Entry List */}
+              <Animated.View
                 style={[
-                  styles.pageButton,
-                  currentPage === 1 && styles.pageButtonDisabled,
+                  styles.grid,
+                  {
+                    opacity: pageFlipAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [1, 0.8, 1],
+                    }),
+                    transform: [
+                      {
+                        translateX: pageFlipAnim.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0, 15, 0],
+                        }),
+                      },
+                    ],
+                  },
                 ]}
-                onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                activeOpacity={0.7}
               >
-                <Text style={styles.pageButtonText}>← 前へ</Text>
-              </TouchableOpacity>
+                {pageEntries.map((entry, index) => {
+                  // 全体での番号（古いものから連番）
+                  const totalIndex = entries.findIndex(
+                    (e) => e.id === entry.id,
+                  );
+                  const number = entries.length - totalIndex;
 
-              <View style={styles.pageCenterColumn}>
-                <Text style={styles.pageNumberText}>
-                  {currentPage} / {totalPages}
-                </Text>
-                <Text style={styles.swipeHintText}>
-                  スワイプでもページ移動可
-                </Text>
+                  return (
+                    <View key={entry.id} style={styles.gridItem}>
+                      <GuideEntryCard
+                        entry={entry}
+                        entryNumber={number}
+                        isSelected={selectedEntryIds.has(entry.id)}
+                        isEditMode={isEditMode || isCategoryEditMode}
+                        onPress={() => handleEntryClick(entry)}
+                      />
+                    </View>
+                  );
+                })}
+              </Animated.View>
+
+              {/* ページネーション */}
+              <View style={styles.paginationRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.pageButton,
+                    currentPage === 1 && styles.pageButtonDisabled,
+                  ]}
+                  onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.pageButtonText}>{t('previous')}</Text>
+                </TouchableOpacity>
+
+                <View style={styles.pageCenterColumn}>
+                  <Text style={styles.pageNumberText}>
+                    {currentPage} / {totalPages}
+                  </Text>
+                  <Text style={styles.swipeHintText}>
+                    {t('swipeHint')}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.pageButton,
+                    currentPage === totalPages && styles.pageButtonDisabled,
+                  ]}
+                  onPress={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.pageButtonText}>{t('next')}</Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.pageButton,
-                  currentPage === totalPages && styles.pageButtonDisabled,
-                ]}
-                onPress={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pageButtonText}>次へ →</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        ) : (
-          selectedEntry && (
-            <GuideEntryDetail
-              entry={selectedEntry}
-              entryNumber={
-                entries.length -
-                entries.findIndex((e) => e.id === selectedEntry.id)
-              }
-              hasPrevEntry={hasPrevEntry}
-              hasNextEntry={hasNextEntry}
-              currentPositionText={`${currentEntryIndex + 1} / ${filteredEntries.length}`}
-              onPrevEntry={handlePrevEntry}
-              onNextEntry={handleNextEntry}
-              onBackToList={handleBackToList}
-              onEntryUpdated={loadEntries}
-            />
-          )
-        )}
+          ) : (
+            selectedEntry && (
+              <GuideEntryDetail
+                entry={selectedEntry}
+                entryNumber={
+                  entries.length -
+                  entries.findIndex((e) => e.id === selectedEntry.id)
+                }
+                hasPrevEntry={hasPrevEntry}
+                hasNextEntry={hasNextEntry}
+                currentPositionText={`${currentEntryIndex + 1} / ${filteredEntries.length}`}
+                onPrevEntry={handlePrevEntry}
+                onNextEntry={handleNextEntry}
+                onBackToList={handleBackToList}
+                onEntryUpdated={loadEntries}
+              />
+            )
+          )}
         </View>
       </View>
     </ScreenWithLeaves>
@@ -856,8 +889,8 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   content: {
-    padding: 20,
-    paddingTop: 8,
+    padding: 12,
+    paddingTop: 24,
     paddingBottom: 20,
     gap: 0,
   },
@@ -865,14 +898,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 8,
-    height: 36,
+    marginTop: 8,
+    marginBottom: 4,
+    height: 32,
   },
   topHeaderRowDetail: {
-    marginTop: 16,
-    marginBottom: 4,
-    justifyContent: "flex-end",
+    height: 0,
+    opacity: 0,
+    margin: 0,
+    padding: 0,
   },
   actionButtonsRight: {
     flexDirection: "row",
@@ -999,12 +1033,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    rowGap: 8,
+    rowGap: 6,
     backgroundColor: "#F8F3E6",
     borderRadius: 8,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
-    padding: 14,
+    padding: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
@@ -1012,7 +1046,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: "#E8E0CE",
-    minHeight: 645,
+    minHeight: 630,
   },
   // 3列表示: 100% を (3 + 隙間2つ)で割る
   gridItem: {
@@ -1020,7 +1054,7 @@ const styles = StyleSheet.create({
   },
   bookBinding: {
     position: "absolute",
-    left: 0,
+    left: -10,
     top: 116,
     bottom: 68,
     width: 22,

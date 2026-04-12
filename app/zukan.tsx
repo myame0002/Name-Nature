@@ -1,6 +1,7 @@
 import { ScreenWithLeaves } from "@/components/screen-with-leaves";
 import {
   addCustomCategory,
+  deleteCustomCategory,
   deleteGuideEntries,
   getCustomCategories,
   getGuideEntries,
@@ -511,24 +512,27 @@ export default function ZukanScreen() {
                     [
                       { text: "キャンセル", style: "cancel" },
                       {
-                        text: "削除する",
-                        style: "destructive",
-                        onPress: () => {
-                          delete categoryLabel[editingCategoryId];
-                          delete categoryColor[editingCategoryId];
-                          delete categoryColorActive[editingCategoryId];
+                         text: "削除する",
+                         style: "destructive",
+                         onPress: () => {
+                           delete categoryLabel[editingCategoryId];
+                           delete categoryColor[editingCategoryId];
+                           delete categoryColorActive[editingCategoryId];
+                           
+                           // ✅ 永続化ストレージからも削除
+                           deleteCustomCategory(editingCategoryId);
 
-                          if (selectedCategory === editingCategoryId) {
-                            setSelectedCategory("all");
-                          }
+                           if (selectedCategory === editingCategoryId) {
+                             setSelectedCategory("all");
+                           }
 
-                          setShowEditCategoryModal(false);
-                          setEditingCategoryId(null);
-                          setNewCategoryName("");
-                          setSelectedColorIndex(0);
+                           setShowEditCategoryModal(false);
+                           setEditingCategoryId(null);
+                           setNewCategoryName("");
+                           setSelectedColorIndex(0);
 
-                          Alert.alert("完了", "カテゴリを削除しました");
-                        },
+                           Alert.alert("完了", "カテゴリを削除しました");
+                         },
                       },
                     ],
                   );

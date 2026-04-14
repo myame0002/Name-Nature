@@ -1,9 +1,21 @@
 /**
  * アプリ内課金 完全版 490円
  * 消費型ではなく永久ライセンス
+ * react-native-iap 版 (SDK52 対応)
  */
 import { Platform, Alert } from 'react-native';
-import * as InAppPurchases from 'expo-in-app-purchases';
+import {
+  initConnection,
+  endConnection,
+  fetchProducts,
+  requestPurchase,
+  getAvailablePurchases,
+  purchaseUpdatedListener,
+  finishTransaction,
+  Product,
+  Purchase,
+} from 'react-native-iap';
+
 import { setPremiumUser, isPremiumUser, loadPremiumStatus } from './api';
 
 // App Store / Google Play 商品ID
@@ -11,6 +23,7 @@ export const PREMIUM_PRODUCT_ID = 'app.namenature.full_version';
 export const PREMIUM_PRICE = '490円';
 
 let isInitialized = false;
+let purchaseUpdateSubscription: any = null;
 
 /**
  * アプリ内課金システムを初期化
@@ -22,26 +35,23 @@ export async function initPremiumSystem() {
     await loadPremiumStatus();
 
     if (Platform.OS !== 'web') {
-      await InAppPurchases.connectAsync();
+      await initConnection();
 
       // 購入済みかどうか復元チェック
-      await InAppPurchases.getPurchaseHistoryAsync();
+      await getAvailablePurchases();
       
-      InAppPurchases.setPurchaseListener(({ responseCode, results, errorCode }) => {
-        if (responseCode === InAppPurchases.IAPResponseCode.OK && results) {
-          results.forEach(purchase => {
-            if (purchase.productId === PREMIUM_PRODUCT_ID && !purchase.acknowledged) {
-              // 購入完了: 永続化
-              setPremiumUser(true);
-              InAppPurchases.finishTransactionAsync(purchase, true);
-              
-              Alert.alert(
-                '✨ ありがとうございます！',
-                '完全版にアップグレードされました。\n全ての機能が無制限に使えるようになりました！',
-                [{ text: 'OK' }]
-              );
-            }
-          });
+      // 購入イベントリスナー
+      purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
+        if (purchase.productId === PREMIUM_PRODUCT_ID) {
+          // 購入完了: 永続化
+          setPremiumUser(true);
+          await finishTransaction({ purchase, isConsumable: false });
+          
+          Alert.alert(
+            ' ありがとうございます！',
+            '完全版にアップグレードされました。\n全ての機能が無制限に使えるようになりました！',
+            [{ text: 'OK' }]
+          );
         }
       });
     }
@@ -64,7 +74,7 @@ export async function purchasePremium() {
   if (Platform.OS === 'web') {
     // Web版の場合はデモ処理
     Alert.alert(
-      '✨ 完全版にアップグレード',
+      ' 完全版にアップグレード',
       `モバイルアプリ版からご購入いただけます。\n\n価格: ${PREMIUM_PRICE} （一回払い）`,
       [{ text: 'OK' }]
     );
@@ -72,14 +82,14 @@ export async function purchasePremium() {
   }
 
   try {
-    const products = await InAppPurchases.getProductsAsync([PREMIUM_PRODUCT_ID]);
+    const products = await fetchProducts({ skus: [PREMIUM_PRODUCT_ID] });
     
-    if (products.length === 0) {
+    if (!products || products.length === 0) {
       Alert.alert('エラー', '商品情報を取得できませんでした。後ほどお試しください。');
       return;
     }
 
-    await InAppPurchases.purchaseItemAsync(PREMIUM_PRODUCT_ID);
+    await requestPurchase({ skus: [PREMIUM_PRODUCT_ID] } as any);
   } catch (e) {
     Alert.alert('エラー', '購入処理に失敗しました。');
   }
@@ -94,7 +104,7 @@ export async function restorePremiumPurchase() {
   }
 
   try {
-    await InAppPurchases.restorePurchasesAsync();
+    await getAvailablePurchases();
     
     if (!isPremiumUser()) {
       Alert.alert(
@@ -120,4 +130,16 @@ export function showPremiumUpgradeAlert() {
       { text: '購入を復元', onPress: restorePremiumPurchase }
     ]
   );
+}
+
+/**
+ * アプリ終了時のクリーンアップ
+ */
+export function cleanupPremiumSystem() {
+  if (purchaseUpdateSubscription) {
+    purchaseUpdateSubscription.remove();
+    purchaseUpdateSubscription = null;
+  }
+  endConnection();
+  isInitialized = false;
 }

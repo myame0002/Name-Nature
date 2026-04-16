@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 12,
     paddingTop: 24,
-    paddingBottom: 48,
+    paddingBottom: 50,
     gap: 0,
     flex: 1,
     justifyContent: 'space-between',
@@ -976,8 +976,8 @@ const styles = StyleSheet.create({
     color: "#2D6A4F",
   },
   tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
     backgroundColor: "#D4C4A8",
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6,
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#5C4A32",
+    color: "#927d63",
     transform: [{ skewX: "5deg" }],
   },
   tabTextActive: {
@@ -1069,8 +1069,8 @@ const styles = StyleSheet.create({
   bookBinding: {
     position: "absolute",
     left: -10,
-    top: 116,
-    bottom: 89,
+    top: 111,
+    bottom: 93,
     width: 22,
     backgroundColor: "rgba(157, 97, 44, 0.79)",
     borderRightWidth: 4,

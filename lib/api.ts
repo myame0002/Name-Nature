@@ -195,6 +195,12 @@ export type GuideEntry = {
   chatHistory: { id: string; role: "user" | "assistant"; content: string }[];
   taxonomy?: TaxonomyInfo;
   imageDataUrl?: string;
+  // 候補を選んで保存された瞬間の元のデータ - 永久に変更されない
+  original?: {
+    title: string;
+    scientificName: string;
+    taxonomy: TaxonomyInfo;
+  };
 };
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -303,6 +309,20 @@ export function addGuideEntry(
     ...entry,
     id: `entry-${Date.now()}`,
     observedAt: new Date().toISOString().split("T")[0],
+    // 図鑑に追加された瞬間の元の値を永久保存
+    original: {
+      title: entry.title,
+      scientificName: entry.scientificName,
+      taxonomy: entry.taxonomy ? { ...entry.taxonomy } : {
+        kingdom: null,
+        phylum: null,
+        class: null,
+        order: null,
+        family: null,
+        genus: null,
+        species: null,
+      },
+    },
   };
   guideEntriesStorage.push(newEntry);
   saveToStorage();

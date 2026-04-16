@@ -770,6 +770,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
+    paddingBottom: 56,
     gap: 20,
   },
   settingsTitle: {

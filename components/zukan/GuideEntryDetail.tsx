@@ -1,26 +1,24 @@
+import { useLanguage } from "@/context/LanguageContext";
 import { type GuideEntry, updateGuideEntry } from "@/lib/api";
-import { useLanguage } from '@/context/LanguageContext';
 import { Image } from "expo-image";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  BackHandler,
+  Dimensions,
+  Easing,
+  Keyboard,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  ScrollView,
-  Animated,
-  Easing,
-  Dimensions,
-  StatusBar,
-  Platform,
-  BackHandler
+  TouchableWithoutFeedback,
+  View
 } from "react-native";
-
-
-
 
 type GuideEntryDetailProps = {
   entry: GuideEntry;
@@ -48,6 +46,23 @@ export function GuideEntryDetail({
   const { t } = useLanguage();
   const [isImageFullscreen, setIsImageFullscreen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const keyboardOffsetAnim = useRef(new Animated.Value(0)).current;
+
+  // 画面を開いた最初の瞬間のデータを永久に保持
+  const originalEntry = useRef({
+    title: entry.title,
+    scientificName: entry.scientificName,
+    observedAt: entry.observedAt,
+    taxonomy: {
+      kingdom: entry.taxonomy?.kingdom || "",
+      phylum: entry.taxonomy?.phylum || "",
+      class: entry.taxonomy?.class || "",
+      order: entry.taxonomy?.order || "",
+      family: entry.taxonomy?.family || "",
+    },
+    note: entry.note,
+  }).current;
+
   const [editValues, setEditValues] = useState({
     title: entry.title,
     scientificName: entry.scientificName,
@@ -62,6 +77,38 @@ export function GuideEntryDetail({
     note: entry.note,
   });
 
+  // キーボード表示/非表示の監視
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (event) => {
+        Animated.timing(keyboardOffsetAnim, {
+          toValue: event.endCoordinates.height,
+          duration: event.duration || 250,
+          useNativeDriver: false,
+          easing: Easing.out(Easing.ease),
+        }).start();
+      },
+    );
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      (event) => {
+        Animated.timing(keyboardOffsetAnim, {
+          toValue: 0,
+          duration: event.duration || 250,
+          useNativeDriver: false,
+          easing: Easing.out(Easing.ease),
+        }).start();
+      },
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, []);
+
   // Android 戻るボタンハンドラ
   const handleBackPress = useCallback(() => {
     onBackToList();
@@ -69,8 +116,11 @@ export function GuideEntryDetail({
   }, [onBackToList]);
 
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    if (Platform.OS === "android") {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBackPress,
+      );
       return () => {
         subscription.remove();
       };
@@ -86,10 +136,30 @@ export function GuideEntryDetail({
   useEffect(() => {
     Animated.sequence([
       Animated.delay(100),
-      Animated.timing(animMainCard, { toValue: 1, duration: 320, useNativeDriver: true, easing: Easing.out(Easing.back(1.12)) }),
-      Animated.timing(animSection1, { toValue: 1, duration: 280, useNativeDriver: true, easing: Easing.out(Easing.back(1.12)) }),
-      Animated.timing(animSection2, { toValue: 1, duration: 280, useNativeDriver: true, easing: Easing.out(Easing.back(1.12)) }),
-      Animated.timing(animSection3, { toValue: 1, duration: 280, useNativeDriver: true, easing: Easing.out(Easing.back(1.12)) }),
+      Animated.timing(animMainCard, {
+        toValue: 1,
+        duration: 320,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.12)),
+      }),
+      Animated.timing(animSection1, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.12)),
+      }),
+      Animated.timing(animSection2, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.12)),
+      }),
+      Animated.timing(animSection3, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.12)),
+      }),
     ]).start();
   }, []);
 
@@ -152,28 +222,35 @@ export function GuideEntryDetail({
   };
 
   const handleReset = () => {
-    Alert.alert(t('resetConfirm'), t('resetConfirmMessage'), [
-      { text: t('cancel'), style: "cancel" },
-      {
-        text: t('reset'),
-        style: "destructive",
+    Alert.alert(
+      t("resetConfirm"),
+      t("resetConfirmMessage"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("reset"),
+          style: "destructive",
         onPress: () => {
+          // 候補を選んで保存された瞬間の元のデータに戻す
+          const base = entry.original || entry;
           setEditValues({
-            title: entry.title,
-            scientificName: entry.scientificName,
+            title: base.title,
+            scientificName: base.scientificName,
             observedAt: entry.observedAt,
             taxonomy: {
-              kingdom: entry.taxonomy?.kingdom || "",
-              phylum: entry.taxonomy?.phylum || "",
-              class: entry.taxonomy?.class || "",
-              order: entry.taxonomy?.order || "",
-              family: entry.taxonomy?.family || "",
+              kingdom: base.taxonomy?.kingdom || "",
+              phylum: base.taxonomy?.phylum || "",
+              class: base.taxonomy?.class || "",
+              order: base.taxonomy?.order || "",
+              family: base.taxonomy?.family || "",
             },
             note: entry.note,
           });
         },
-      },
-    ], { cancelable: true });
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   const updateTaxonomy = (field: string, value: string) => {
@@ -188,226 +265,310 @@ export function GuideEntryDetail({
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.topRow}>
-          <TouchableOpacity
-            style={styles.backToListButton}
-            onPress={onBackToList}
-            activeOpacity={0.7}
+      <Animated.View
+        style={[styles.container, { paddingBottom: keyboardOffsetAnim }]}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          <TouchableWithoutFeedback
+            onPress={Keyboard.dismiss}
+            accessible={false}
           >
-            <Text style={styles.backToListText}>← {t('backToList')}</Text>
-          </TouchableOpacity>
+            <View style={styles.touchableInnerContainer}>
+              <View style={styles.topRow}>
+                <TouchableOpacity
+                  style={styles.backToListButton}
+                  onPress={onBackToList}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.backToListText}>← {t("backToList")}</Text>
+                </TouchableOpacity>
 
-          {!isEditMode ? (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setIsEditMode(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.editButtonText}>✎ {t('edit')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.editActionsRow}>
-              <TouchableOpacity
-                style={styles.resetIconButton}
-                onPress={handleReset}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.resetIconText}>↺</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCancel}
-                activeOpacity={0.7}
-              >
-              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSave}
-                activeOpacity={0.7}
-              >
-              <Text style={styles.saveButtonText}>{t('save')}</Text>
-              </TouchableOpacity>
+                {!isEditMode ? (
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => setIsEditMode(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.editButtonText}>✎ {t("edit")}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.editActionsRow}>
+                    <TouchableOpacity
+                      style={styles.resetIconButton}
+                      onPress={handleReset}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.resetIconText}>↺</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleCancel}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.saveButton}
+                      onPress={handleSave}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.saveButtonText}>{t("save")}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.detailContainer}>
+                <Animated.View
+                  style={[
+                    styles.mainCard,
+                    {
+                      opacity: animMainCard,
+                      transform: [
+                        {
+                          translateY: animMainCard.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-40, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <View style={styles.mainCardNailLeft} />
+                  <View style={styles.mainCardNailRight} />
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => setIsImageFullscreen(true)}
+                  >
+                    <Image
+                      source={{ uri: entry.imageUrl }}
+                      style={styles.detailImage}
+                      contentFit="cover"
+                    />
+                  </TouchableOpacity>
+
+                  <View style={styles.detailHeader}>
+                    <Text style={styles.entryNumber}>No.{entryNumber}</Text>
+                    {isEditMode ? (
+                      <TextInput
+                        style={styles.editTitleInput}
+                        value={editValues.title}
+                        onChangeText={(value) =>
+                          setEditValues((prev) => ({ ...prev, title: value }))
+                        }
+                      />
+                    ) : (
+                      <Text style={styles.detailTitle}>{entry.title}</Text>
+                    )}
+
+                    {isEditMode ? (
+                      <TextInput
+                        style={styles.editScientificInput}
+                        value={editValues.scientificName}
+                        onChangeText={(value) =>
+                          setEditValues((prev) => ({
+                            ...prev,
+                            scientificName: value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <Text style={styles.detailScientific}>
+                        {entry.scientificName}
+                      </Text>
+                    )}
+
+                    {isEditMode ? (
+                      <TextInput
+                        style={styles.editDateInput}
+                        value={editValues.observedAt}
+                        onChangeText={(value) =>
+                          setEditValues((prev) => ({
+                            ...prev,
+                            observedAt: value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <Text style={styles.detailMeta}>
+                        {entry.category === "flower"
+                          ? `🌸 ${t("category.flower")}`
+                          : entry.category === "fungus"
+                            ? `🍄 ${t("category.fungus")}`
+                            : entry.category === "bird"
+                              ? `🐦 ${t("category.bird")}`
+                              : entry.category === "insect"
+                                ? `🦋 ${t("category.insect")}`
+                                : ""}{" "}
+                        | {entry.observedAt}
+                      </Text>
+                    )}
+                  </View>
+                </Animated.View>
+
+                <Animated.View
+                  style={[
+                    styles.section,
+                    {
+                      opacity: animSection1,
+                      transform: [
+                        {
+                          translateY: animSection1.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-40, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <View style={styles.sectionStringLeft} />
+                  <View style={styles.sectionStringRight} />
+                  <View style={styles.sectionNailLeft} />
+                  <View style={styles.sectionNailRight} />
+                  <Text style={styles.sectionTitle}>{t("taxonomy")}</Text>
+                  <View style={styles.taxonomyGrid}>
+                    <View style={styles.taxonomyRow}>
+                      <Text style={styles.taxonomyLabel}>
+                        {t("taxonomy.kingdom")}
+                      </Text>
+                      {isEditMode ? (
+                        <TextInput
+                          style={styles.taxonomyEditInput}
+                          value={editValues.taxonomy.kingdom}
+                          onChangeText={(value) =>
+                            updateTaxonomy("kingdom", value)
+                          }
+                        />
+                      ) : (
+                        <Text style={styles.taxonomyValue}>
+                          {entry.taxonomy?.kingdom || "-"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.taxonomyRow}>
+                      <Text style={styles.taxonomyLabel}>
+                        {t("taxonomy.phylum")}
+                      </Text>
+                      {isEditMode ? (
+                        <TextInput
+                          style={styles.taxonomyEditInput}
+                          value={editValues.taxonomy.phylum}
+                          onChangeText={(value) =>
+                            updateTaxonomy("phylum", value)
+                          }
+                        />
+                      ) : (
+                        <Text style={styles.taxonomyValue}>
+                          {entry.taxonomy?.phylum || "-"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.taxonomyRow}>
+                      <Text style={styles.taxonomyLabel}>
+                        {t("taxonomy.class")}
+                      </Text>
+                      {isEditMode ? (
+                        <TextInput
+                          style={styles.taxonomyEditInput}
+                          value={editValues.taxonomy.class}
+                          onChangeText={(value) =>
+                            updateTaxonomy("class", value)
+                          }
+                        />
+                      ) : (
+                        <Text style={styles.taxonomyValue}>
+                          {entry.taxonomy?.class || "-"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.taxonomyRow}>
+                      <Text style={styles.taxonomyLabel}>
+                        {t("taxonomy.order")}
+                      </Text>
+                      {isEditMode ? (
+                        <TextInput
+                          style={styles.taxonomyEditInput}
+                          value={editValues.taxonomy.order}
+                          onChangeText={(value) =>
+                            updateTaxonomy("order", value)
+                          }
+                        />
+                      ) : (
+                        <Text style={styles.taxonomyValue}>
+                          {entry.taxonomy?.order || "-"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.taxonomyRow}>
+                      <Text style={styles.taxonomyLabel}>
+                        {t("taxonomy.family")}
+                      </Text>
+                      {isEditMode ? (
+                        <TextInput
+                          style={styles.taxonomyEditInput}
+                          value={editValues.taxonomy.family}
+                          onChangeText={(value) =>
+                            updateTaxonomy("family", value)
+                          }
+                        />
+                      ) : (
+                        <Text style={styles.taxonomyValue}>
+                          {entry.taxonomy?.family || "-"}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </Animated.View>
+
+                <Animated.View
+                  style={[
+                    styles.section,
+                    {
+                      opacity: animSection2,
+                      transform: [
+                        {
+                          translateY: animSection2.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-40, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <View style={styles.sectionStringLeft} />
+                  <View style={styles.sectionStringRight} />
+                  <View style={styles.sectionNailLeft} />
+                  <View style={styles.sectionNailRight} />
+                  <Text style={styles.sectionTitle}>{t("note")}</Text>
+                  <TextInput
+                    style={styles.noteInput}
+                    value={editValues.note}
+                    onChangeText={(value) =>
+                      setEditValues((prev) => ({ ...prev, note: value }))
+                    }
+                    multiline
+                    placeholder={t("notePlaceholder")}
+                    onBlur={() => {
+                      if (editValues.note !== entry.note) {
+                        updateGuideEntry(entry.id, { note: editValues.note });
+                        onEntryUpdated();
+                      }
+                    }}
+                  />
+                </Animated.View>
+              </View>
             </View>
-          )}
-        </View>
-
-        <View style={styles.detailContainer}>
-        <Animated.View style={[styles.mainCard, {
-          opacity: animMainCard,
-          transform: [{ translateY: animMainCard.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }]
-        }]}>
-          <View style={styles.mainCardNailLeft} />
-          <View style={styles.mainCardNailRight} />
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => setIsImageFullscreen(true)}
-          >
-            <Image
-              source={{ uri: entry.imageUrl }}
-              style={styles.detailImage}
-              contentFit="cover"
-            />
-          </TouchableOpacity>
-
-          <View style={styles.detailHeader}>
-            <Text style={styles.entryNumber}>No.{entryNumber}</Text>
-            {isEditMode ? (
-              <TextInput
-                style={styles.editTitleInput}
-                value={editValues.title}
-                onChangeText={(value) =>
-                  setEditValues((prev) => ({ ...prev, title: value }))
-                }
-              />
-            ) : (
-              <Text style={styles.detailTitle}>{entry.title}</Text>
-            )}
-
-            {isEditMode ? (
-              <TextInput
-                style={styles.editScientificInput}
-                value={editValues.scientificName}
-                onChangeText={(value) =>
-                  setEditValues((prev) => ({ ...prev, scientificName: value }))
-                }
-              />
-            ) : (
-              <Text style={styles.detailScientific}>
-                {entry.scientificName}
-              </Text>
-            )}
-
-            {isEditMode ? (
-              <TextInput
-                style={styles.editDateInput}
-                value={editValues.observedAt}
-                onChangeText={(value) =>
-                  setEditValues((prev) => ({ ...prev, observedAt: value }))
-                }
-              />
-            ) : (
-              <Text style={styles.detailMeta}>
-                {entry.category === 'flower' ? `🌸 ${t('category.flower')}` :
-                 entry.category === 'fungus' ? `🍄 ${t('category.fungus')}` :
-                 entry.category === 'bird' ? `🐦 ${t('category.bird')}` :
-                 entry.category === 'insect' ? `🦋 ${t('category.insect')}` : ''} | {entry.observedAt}
-              </Text>
-            )}
-          </View>
-        </Animated.View>
-
-        <Animated.View style={[styles.section, {
-          opacity: animSection1,
-          transform: [{ translateY: animSection1.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }]
-        }]}>
-          <View style={styles.sectionStringLeft} />
-          <View style={styles.sectionStringRight} />
-          <View style={styles.sectionNailLeft} />
-          <View style={styles.sectionNailRight} />
-          <Text style={styles.sectionTitle}>{t('taxonomy')}</Text>
-          <View style={styles.taxonomyGrid}>
-            <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>{t('taxonomy.kingdom')}</Text>
-              {isEditMode ? (
-                <TextInput
-                  style={styles.taxonomyEditInput}
-                  value={editValues.taxonomy.kingdom}
-                  onChangeText={(value) => updateTaxonomy("kingdom", value)}
-                />
-              ) : (
-                <Text style={styles.taxonomyValue}>
-                  {entry.taxonomy?.kingdom || "-"}
-                </Text>
-              )}
-            </View>
-            <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>{t('taxonomy.phylum')}</Text>
-              {isEditMode ? (
-                <TextInput
-                  style={styles.taxonomyEditInput}
-                  value={editValues.taxonomy.phylum}
-                  onChangeText={(value) => updateTaxonomy("phylum", value)}
-                />
-              ) : (
-                <Text style={styles.taxonomyValue}>
-                  {entry.taxonomy?.phylum || "-"}
-                </Text>
-              )}
-            </View>
-            <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>{t('taxonomy.class')}</Text>
-              {isEditMode ? (
-                <TextInput
-                  style={styles.taxonomyEditInput}
-                  value={editValues.taxonomy.class}
-                  onChangeText={(value) => updateTaxonomy("class", value)}
-                />
-              ) : (
-                <Text style={styles.taxonomyValue}>
-                  {entry.taxonomy?.class || "-"}
-                </Text>
-              )}
-            </View>
-            <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>{t('taxonomy.order')}</Text>
-              {isEditMode ? (
-                <TextInput
-                  style={styles.taxonomyEditInput}
-                  value={editValues.taxonomy.order}
-                  onChangeText={(value) => updateTaxonomy("order", value)}
-                />
-              ) : (
-                <Text style={styles.taxonomyValue}>
-                  {entry.taxonomy?.order || "-"}
-                </Text>
-              )}
-            </View>
-            <View style={styles.taxonomyRow}>
-              <Text style={styles.taxonomyLabel}>{t('taxonomy.family')}</Text>
-              {isEditMode ? (
-                <TextInput
-                  style={styles.taxonomyEditInput}
-                  value={editValues.taxonomy.family}
-                  onChangeText={(value) => updateTaxonomy("family", value)}
-                />
-              ) : (
-                <Text style={styles.taxonomyValue}>
-                  {entry.taxonomy?.family || "-"}
-                </Text>
-              )}
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View style={[styles.section, {
-          opacity: animSection2,
-          transform: [{ translateY: animSection2.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }]
-        }]}>
-          <View style={styles.sectionStringLeft} />
-          <View style={styles.sectionStringRight} />
-          <View style={styles.sectionNailLeft} />
-          <View style={styles.sectionNailRight} />
-          <Text style={styles.sectionTitle}>{t('note')}</Text>
-          <TextInput
-            style={styles.noteInput}
-            value={editValues.note}
-            onChangeText={(value) =>
-              setEditValues((prev) => ({ ...prev, note: value }))
-            }
-            multiline
-            placeholder={t('notePlaceholder')}
-            onBlur={() => {
-              if (editValues.note !== entry.note) {
-                updateGuideEntry(entry.id, { note: editValues.note });
-                onEntryUpdated();
-              }
-            }}
-          />
-        </Animated.View>
-        </View>
-      </ScrollView>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </Animated.View>
 
       {/* フルスクリーン画像モーダル */}
       <Modal
@@ -421,14 +582,13 @@ export function GuideEntryDetail({
           style={styles.fullscreenModalOverlay}
           activeOpacity={1}
           onPress={() => setIsImageFullscreen(false)}
-
         >
           <Image
             source={{ uri: entry.imageUrl }}
             style={styles.fullscreenImage}
             contentFit="contain"
           />
-           <Text style={styles.fullscreenCloseHint}>タップで閉じる</Text>
+          <Text style={styles.fullscreenCloseHint}>タップで閉じる</Text>
         </TouchableOpacity>
       </Modal>
     </>
@@ -436,6 +596,16 @@ export function GuideEntryDetail({
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
+  touchableInnerContainer: {
+    flex: 1,
+    minHeight: "100%",
+  },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -747,20 +917,20 @@ const styles = StyleSheet.create({
   },
   fullscreenModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
   fullscreenImage: {
-    width: Dimensions.get('window').width - 32,
-    height: Dimensions.get('window').height - 120,
+    width: Dimensions.get("window").width - 32,
+    height: Dimensions.get("window").height - 120,
     borderRadius: 8,
   },
   fullscreenCloseHint: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 40,
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     fontSize: 13,
   },
 });

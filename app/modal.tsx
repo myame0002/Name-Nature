@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     paddingTop: 36,
-    paddingBottom: 40,
+    paddingBottom: 70,
     flexGrow: 1,
     justifyContent: 'space-between',
   },

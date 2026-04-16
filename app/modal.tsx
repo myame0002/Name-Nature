@@ -1,32 +1,43 @@
-import { useRouter } from 'expo-router';
-import { Image } from 'expo-image';
-import { useState, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, View, Text, PanResponder, Animated, Easing } from 'react-native';
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { useLanguage } from '@/context/LanguageContext';
+import {
+  Animated,
+  Easing,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { ScreenWithLeaves } from '@/components/screen-with-leaves';
+import { ScreenWithLeaves } from "@/components/screen-with-leaves";
 
 const guideImages = [
-  require('@/assets/images/image1.jpg'),
-  require('@/assets/images/image2.jpg'),
-  require('@/assets/images/image3.jpg'),
-  require('@/assets/images/image4.jpg'),
-  require('@/assets/images/image5.jpg'),
-  require('@/assets/images/image6.jpg'),
+  require("@/assets/images/image1.jpg"),
+  require("@/assets/images/image2.jpg"),
+  require("@/assets/images/image3.jpg"),
+  require("@/assets/images/image4.jpg"),
+  require("@/assets/images/image5.jpg"),
+  require("@/assets/images/image6.jpg"),
 ];
 
-const guideTexts = [
-  "画面に出てくる「トークンを取得する」をタップします。",
-  "iNaturalistの登録画面がブラウザで開くため、新規登録またはログインします。",
-  "ログインが完了するとトークンが発行されるはずです。",
-  "\"api_token\"の内容をコピーします。\n(\"api_token\"の部分は含めず、\"～\"の～部分のみコピーしてください)",
-  "「トークンを入力する」から、コピーした内容を貼り付け、保存することで利用可能になります。",
-  "一度設定したトークンは通常永久に有効です。\nパスワードを変更した場合などにリセットされます。\n無効になった場合は再度発行してください。\n何度でも発行可能です"
-];
 
 export default function ModalScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [currentPage, setCurrentPage] = useState(0);
   const pageFlipAnim = useRef(new Animated.Value(0)).current;
+
+  const guideTexts = [
+    t('tokenGuideStep1'),
+    t('tokenGuideStep2'),
+    t('tokenGuideStep3'),
+    t('tokenGuideStep4'),
+    t('tokenGuideStep5'),
+    t('tokenGuideStep6'),
+  ];
 
   // ページめくりアニメーション
   const triggerPageFlip = () => {
@@ -35,12 +46,12 @@ export default function ModalScreen() {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
-      easing: Easing.out(Easing.ease)
+      easing: Easing.out(Easing.ease),
     }).start();
-  }
+  };
 
   // ページ変更時にアニメーションを実行
-  const useEffect = require('react').useEffect;
+  const useEffect = require("react").useEffect;
   useEffect(() => {
     triggerPageFlip();
   }, [currentPage]);
@@ -82,24 +93,29 @@ export default function ModalScreen() {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Text style={styles.backText}>← 戻る</Text>
+          <Text style={styles.backText}>← {t('back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>トークン取得手順</Text>
+        <Text style={styles.pageTitle}>{t('tokenGuideTitle')}</Text>
       </View>
 
       <View style={styles.guideContainer} {...panResponder.panHandlers}>
-        <Animated.View style={{
-          opacity: pageFlipAnim.interpolate({
-            inputRange: [0, 0.5, 1],
-            outputRange: [1, 0.8, 1]
-          }),
-          transform: [{
-            translateX: pageFlipAnim.interpolate({
+        <View style={styles.contentWrapper}>
+        <Animated.View
+          style={{
+            opacity: pageFlipAnim.interpolate({
               inputRange: [0, 0.5, 1],
-              outputRange: [0, 15, 0]
-            })
-          }]
-        }}>
+              outputRange: [1, 0.8, 1],
+            }),
+            transform: [
+              {
+                translateX: pageFlipAnim.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0, 15, 0],
+                }),
+              },
+            ],
+          }}
+        >
           <Image
             source={guideImages[currentPage]}
             style={styles.guideImage}
@@ -111,47 +127,63 @@ export default function ModalScreen() {
           <Text style={styles.stepNumber}>
             Step {currentPage + 1} / {guideImages.length}
           </Text>
-          <Text style={styles.description}>
-            {guideTexts[currentPage]}
-          </Text>
+          <Text style={styles.description}>{guideTexts[currentPage]}</Text>
+        </View>
         </View>
 
         <View style={styles.progressDots}>
           {guideImages.map((_, index) => (
             <View
               key={index}
-              style={[
-                styles.dot,
-                index === currentPage && styles.dotActive
-              ]}
+              style={[styles.dot, index === currentPage && styles.dotActive]}
             />
           ))}
         </View>
 
         <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.navButton, currentPage === 0 && styles.navButtonDisabled]}
+            style={[
+              styles.navButton,
+              currentPage === 0 && styles.navButtonDisabled,
+            ]}
             onPress={goPrev}
             disabled={currentPage === 0}
             activeOpacity={0.8}
           >
-            <Text style={[styles.navButtonText, currentPage === 0 && styles.navButtonTextDisabled]}>
-              前へ
+            <Text
+              style={[
+                styles.navButtonText,
+                currentPage === 0 && styles.navButtonTextDisabled,
+              ]}
+            >
+              {t('previous')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.navButton, currentPage === guideImages.length - 1 && styles.navButtonPrimary]}
-            onPress={currentPage === guideImages.length - 1 ? () => router.back() : goNext}
+            style={[
+              styles.navButton,
+              currentPage === guideImages.length - 1 && styles.navButtonPrimary,
+            ]}
+            onPress={
+              currentPage === guideImages.length - 1
+                ? () => router.back()
+                : goNext
+            }
             activeOpacity={0.8}
           >
-            <Text style={[styles.navButtonText, currentPage === guideImages.length - 1 && styles.navButtonTextPrimary]}>
-              {currentPage === guideImages.length - 1 ? "完了" : "次へ"}
+            <Text
+              style={[
+                styles.navButtonText,
+                currentPage === guideImages.length - 1 &&
+                  styles.navButtonTextPrimary,
+              ]}
+            >
+              {currentPage === guideImages.length - 1 ? t('done') : t('next')}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-
     </ScreenWithLeaves>
   );
 }
@@ -160,7 +192,9 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     paddingTop: 36,
+    paddingBottom: 40,
     flexGrow: 1,
+    justifyContent: 'space-between',
   },
   header: {
     gap: 12,
@@ -177,6 +211,11 @@ const styles = StyleSheet.create({
     color: "#17351F",
   },
   guideContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+
+  contentWrapper: {
     flex: 1,
     gap: 20,
     justifyContent: "center",
@@ -211,7 +250,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 8,
-    marginTop: 8,
+    marginBottom: 20,
   },
   dot: {
     width: 8,
@@ -226,7 +265,8 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 8,
+    marginTop: 20,
+    marginBottom: 20,
   },
   navButton: {
     flex: 1,

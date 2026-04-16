@@ -222,9 +222,7 @@ export default function KaisekiScreen() {
       setAnalysisStatus("success");
 
       if (response.results.length === 0) {
-        setAnalysisMessage(
-          t('noCandidatesFound'),
-        );
+        setAnalysisMessage(t("noCandidatesFound"));
       }
     } catch (error) {
       setAnalysisStatus("error");
@@ -243,9 +241,7 @@ export default function KaisekiScreen() {
           ],
           { cancelable: true },
         );
-        setAnalysisMessage(
-          t('tokenExpiredRetry'),
-        );
+        setAnalysisMessage(t("tokenExpiredRetry"));
         return;
       }
 
@@ -253,14 +249,10 @@ export default function KaisekiScreen() {
         error instanceof Error &&
         error.message.includes("Error scoring image")
       ) {
-        setAnalysisMessage(
-          t('unsupportedImageFormat'),
-        );
+        setAnalysisMessage(t("unsupportedImageFormat"));
       } else {
         setAnalysisMessage(
-          error instanceof Error
-            ? error.message
-            : t('analysisError'),
+          error instanceof Error ? error.message : t("analysisError"),
         );
       }
     }
@@ -480,7 +472,7 @@ export default function KaisekiScreen() {
           // アニメーション完了後、永久に実行済みとしてマーク
           setAnimatedSections((prev) => new Set([...prev, id]));
         });
-      }, [id]);
+      }, [id, delay]);
 
       return (
         <Animated.View style={{ opacity, transform: [{ translateY }] }}>
@@ -488,7 +480,7 @@ export default function KaisekiScreen() {
         </Animated.View>
       );
     };
-  }, [animatedSections]);
+  }, []);
 
   // ── Render ─────────────────────────────────────────────────────
 
@@ -852,9 +844,14 @@ export default function KaisekiScreen() {
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
-                onPress={() => setShowTokenInput(false)}
+                onPress={() => {
+                  setShowTokenInput(false);
+                  setTokenInputValue("");
+                  // キャンセル時は解析ボタンを再度有効化
+                  setAnalysisStatus("ready");
+                }}
               >
-                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
+                <Text style={styles.modalCancelText}>{t("cancel")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -864,16 +861,15 @@ export default function KaisekiScreen() {
                     await setInaturalistToken(tokenInputValue.trim());
                     setShowTokenInput(false);
                     setTokenInputValue("");
-                    Alert.alert(
-                      t("setupComplete"),
-                      t('tokenSaved'),
-                      [],
-                      { cancelable: true },
-                    );
+                    // トークン保存後は自動的に再解析可能状態に戻す
+                    setAnalysisStatus("ready");
+                    Alert.alert(t("setupComplete"), t("tokenSaved"), [], {
+                      cancelable: true,
+                    });
                   }
                 }}
               >
-                <Text style={styles.modalSaveText}>{t('save')}</Text>
+                <Text style={styles.modalSaveText}>{t("save")}</Text>
               </TouchableOpacity>
             </View>
           </View>

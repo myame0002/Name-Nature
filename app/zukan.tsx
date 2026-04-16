@@ -176,6 +176,14 @@ export default function ZukanScreen() {
       );
     });
     setEntries(sorted);
+
+    // 詳細表示中の場合は最新のデータでselectedEntryも更新する
+    if (selectedEntry) {
+      const updatedEntry = sorted.find(e => e.id === selectedEntry.id);
+      if (updatedEntry) {
+        setSelectedEntry(updatedEntry);
+      }
+    }
   }
 
   const filteredEntries =
@@ -895,8 +903,10 @@ const styles = StyleSheet.create({
   content: {
     padding: 12,
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 48,
     gap: 0,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   topHeaderRow: {
     flexDirection: "row",
@@ -1060,7 +1070,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: -10,
     top: 116,
-    bottom: 68,
+    bottom: 89,
     width: 22,
     backgroundColor: "rgba(157, 97, 44, 0.79)",
     borderRightWidth: 4,

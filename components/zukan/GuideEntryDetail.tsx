@@ -93,6 +93,23 @@ export function GuideEntryDetail({
     ]).start();
   }, []);
 
+  // 親から渡されるentryが更新された時にローカルステートも更新する
+  useEffect(() => {
+    setEditValues({
+      title: entry.title,
+      scientificName: entry.scientificName,
+      observedAt: entry.observedAt,
+      taxonomy: {
+        kingdom: entry.taxonomy?.kingdom || "",
+        phylum: entry.taxonomy?.phylum || "",
+        class: entry.taxonomy?.class || "",
+        order: entry.taxonomy?.order || "",
+        family: entry.taxonomy?.family || "",
+      },
+      note: entry.note,
+    });
+  }, [entry]);
+
   const handleSave = () => {
     updateGuideEntry(entry.id, {
       title: editValues.title,

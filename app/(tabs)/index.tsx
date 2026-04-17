@@ -15,6 +15,7 @@ import {
 
 import { ScreenWithLeaves } from "../../components/screen-with-leaves";
 import { TokenInputModal } from '../../components/TokenInputModal';
+import { TesterCodeModal } from '../../components/TesterCodeModal';
 import { hasValidToken, setInaturalistToken, loadStoredToken, setTokenExpiredSimulation, isTokenExpiredSimulationEnabled } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -98,6 +99,8 @@ export default function HomeScreen() {
   const { t, language, setLanguage } = useLanguage();
   const [tokenStatus, setTokenStatus] = useState<'checking' | 'valid' | 'invalid' | 'expired'>('checking');
   const [showTokenInput, setShowTokenInput] = useState(false);
+  const [showTesterCode, setShowTesterCode] = useState(false);
+  const [secretTapCount, setSecretTapCount] = useState(0);
   
   // 設定モーダル表示アニメーション
   const settingsModalAnim = useRef(new Animated.Value(0)).current;
@@ -196,13 +199,28 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity 
-            style={styles.settingsButton} 
-            activeOpacity={0.7}
-            onPress={() => setShowSettings(true)}
-          >
-            <Text style={styles.settingsButtonText}>{t('settings')}</Text>
-          </TouchableOpacity>
+           <TouchableOpacity 
+             style={styles.settingsButton} 
+             activeOpacity={0.7}
+             onPress={() => {
+               // 隠し機能: 設定ボタンを10回タップするとテスターコード入力画面が開く
+               const newCount = secretTapCount + 1;
+               setSecretTapCount(newCount);
+               
+               if (newCount >= 10) {
+                 setSecretTapCount(0);
+                 setShowTesterCode(true);
+               } else {
+                 setShowSettings(true);
+               }
+             }}
+             onLongPress={() => {
+               // 長押しでも開く
+               setShowTesterCode(true);
+             }}
+           >
+             <Text style={styles.settingsButtonText}>{t('settings')}</Text>
+           </TouchableOpacity>
         </View>
       </View>
 
@@ -342,16 +360,22 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* 🔑 トークン入力モーダル */}
-      <TokenInputModal
-        visible={showTokenInput}
-        onClose={() => setShowTokenInput(false)}
-        onSuccess={() => {
-          Alert.alert(t('setupComplete'), t('tokenSaved'), [], { cancelable: true });
-        }}
-      />
+       {/* 🔑 トークン入力モーダル */}
+       <TokenInputModal
+         visible={showTokenInput}
+         onClose={() => setShowTokenInput(false)}
+         onSuccess={() => {
+           Alert.alert(t('setupComplete'), t('tokenSaved'), [], { cancelable: true });
+         }}
+       />
 
-    </ScreenWithLeaves>
+       {/* 🔑 テスターコード入力モーダル */}
+       <TesterCodeModal
+         visible={showTesterCode}
+         onClose={() => setShowTesterCode(false)}
+       />
+
+     </ScreenWithLeaves>
   );
 }
 

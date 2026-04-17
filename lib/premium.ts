@@ -66,7 +66,8 @@ export async function initPremiumSystem() {
  * 完全版を購入
  */
 export async function purchasePremium() {
-  if (isPremiumUser()) {
+  // テスター版の場合は購入画面に普通に進める（実際に課金して正規のライセンスに移行できるように）
+  if (isPremiumUser() && !__IS_TESTER_PREMIUM__) {
     Alert.alert('お知らせ', '既に完全版を購入済みです。');
     return;
   }
@@ -130,6 +131,36 @@ export function showPremiumUpgradeAlert() {
       { text: '購入を復元', onPress: restorePremiumPurchase }
     ]
   );
+}
+
+// テスター版フラグ
+export let __IS_TESTER_PREMIUM__ = false;
+
+/**
+ * クローズドテスター用 完全版開放
+ * シークレットコード認証済みの場合に呼び出し
+ */
+export function activateTesterPremium() {
+  __IS_TESTER_PREMIUM__ = true;
+  setPremiumUser(true);
+  Alert.alert(
+    '✅ テスター登録完了',
+    '完全版が永久に開放されました！\nクローズドテストへようこそ。\n\n全ての機能が無制限で利用可能です。',
+    [{ text: 'ありがとう' }]
+  );
+}
+
+/**
+ * シークレットコード検証
+ */
+export function verifyTesterCode(code: string): boolean {
+  const validCodes = [
+    'NATURE2026',
+    'TESTER0417',
+    'CLOSED_BETA'
+  ];
+  
+  return validCodes.includes(code.trim().toUpperCase());
 }
 
 /**

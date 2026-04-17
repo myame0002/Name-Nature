@@ -226,12 +226,12 @@ export default function HomeScreen() {
           <Animated.View style={[
             styles.settingsModal,
             {
-              transform: [{
-                translateY: settingsModalAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [600, 0],
-                }),
-              }],
+               transform: [{
+                 translateY: settingsModalAnim.interpolate({
+                   inputRange: [0, 1],
+                   outputRange: [850, 0],
+                 }),
+               }],
               opacity: settingsModalAnim,
             }
           ]}>
@@ -765,14 +765,14 @@ const styles = StyleSheet.create({
   },
 
   // 設定モーダル
-  settingsModal: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 56,
-    gap: 20,
-  },
+   settingsModal: {
+     backgroundColor: "#FFFFFF",
+     borderTopLeftRadius: 24,
+     borderTopRightRadius: 24,
+     padding: 24,
+     paddingBottom: 80,
+     gap: 20,
+   },
   settingsTitle: {
     fontSize: 20,
     fontWeight: "800",

@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 12,
-    paddingTop: 24,
+    paddingTop: 12,
     paddingBottom: 50,
     gap: 0,
     flex: 1,
@@ -912,9 +912,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
-    marginBottom: 4,
-    height: 32,
+    marginTop: 20,
+    marginBottom: 0,
+    height: 34,
   },
   topHeaderRowDetail: {
     height: 0,
@@ -936,7 +936,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#2D6A4F",
     fontWeight: "600",
-    marginBottom: 4,
   },
   editHintBar: {
     paddingVertical: 6,
@@ -978,6 +977,8 @@ const styles = StyleSheet.create({
   tabButton: {
     paddingHorizontal: 14,
     paddingVertical: 5,
+    paddingTop: 8,
+    paddingBottom: 1,
     backgroundColor: "#D4C4A8",
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6,
@@ -1053,6 +1054,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     padding: 10,
+    paddingTop: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
@@ -1069,8 +1071,8 @@ const styles = StyleSheet.create({
   bookBinding: {
     position: "absolute",
     left: -10,
-    top: 111,
-    bottom: 93,
+    top: 106,
+    bottom: 98,
     width: 22,
     backgroundColor: "rgba(157, 97, 44, 0.79)",
     borderRightWidth: 4,

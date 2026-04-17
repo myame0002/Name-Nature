@@ -70,10 +70,10 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
-  cardPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.995 }],
-  },
+   cardPressed: {
+     opacity: 0.92,
+     transform: [{ scale: 0.97 }],
+   },
   cardSelected: {
     borderColor: "#2D6A4F",
     backgroundColor: "#F0F7F2",

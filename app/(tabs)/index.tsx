@@ -17,6 +17,7 @@ import { ScreenWithLeaves } from "../../components/screen-with-leaves";
 import { TokenInputModal } from '../../components/TokenInputModal';
 import { TesterCodeModal } from '../../components/TesterCodeModal';
 import { hasValidToken, setInaturalistToken, loadStoredToken, setTokenExpiredSimulation, isTokenExpiredSimulationEnabled } from '@/lib/api';
+import { purchasePremium } from '@/lib/premium';
 import { useLanguage } from '@/context/LanguageContext';
 
 type Step = {
@@ -339,10 +340,19 @@ export default function HomeScreen() {
               >
                 <Text style={[styles.debugButtonText, styles.debugButtonTextWarn]}>{t('simulateExpired')}</Text>
               </TouchableOpacity>
-            </View>
+          </View>
 
-            <TouchableOpacity
-              style={styles.settingsCloseButton}
+          {/* 完全版アップグレードボタン */}
+          <TouchableOpacity
+            style={[styles.mainSecondaryButton, { borderRadius: 16, marginTop: 8, marginBottom: 8 }]}
+            activeOpacity={0.8}
+            onPress={() => purchasePremium()}
+          >
+            <Text style={styles.mainSecondaryButtonText}>✨ 完全版を購入する</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingsCloseButton}
               onPress={() => {
                 Animated.timing(settingsModalAnim, {
                   toValue: 0,

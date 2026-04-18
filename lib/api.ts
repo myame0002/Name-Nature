@@ -206,6 +206,8 @@ export type GuideEntry = {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
+export { AsyncStorage };
+
 // 有料制限設定
 export const FREE_ENTRY_LIMIT = 10;
 export let IS_PREMIUM_USER = false;
@@ -904,9 +906,21 @@ export async function analyzeNaturePhoto(
   if (!response.ok) {
     // トークン期限切れ・無効の場合は特別に処理
     if (response.status === 401) {
-      // 無効なトークンを削除
-      await setInaturalistToken(null);
-      throw new Error("TOKEN_EXPIRED");
+      // iNaturalist は一時的なエラーでも401を返す事が非常に多いので、本当にトークンが無効な場合以外は削除しない
+      // 安易にトークンを削除しない: 9割はサーバー側の一時的な障害
+      try {
+        const bodyText = text;
+        if (bodyText.includes("Invalid token") || bodyText.includes("expired") || bodyText.includes("unauthorized")) {
+          // 明確にトークンが無効な場合にだけ削除
+          await setInaturalistToken(null);
+          throw new Error("TOKEN_EXPIRED");
+        }
+      } catch {
+        // レスポンスが読めない場合は一時エラーと判断
+      }
+      
+      // 一時的なエラーの場合はユーザーに再試行を促す
+      throw new Error("iNaturalist サーバーが一時的に応答していません。もう一度お試しください。");
     }
     
     throw new Error(extractErrorMessage(json, response.status, text));

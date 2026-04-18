@@ -128,7 +128,7 @@ export async function purchasePremium() {
   }
 
   try {
-    let products: any[] = [];
+    let products: any;
     
     try {
       // 本番環境では必ず商品取得が成功する必要がある

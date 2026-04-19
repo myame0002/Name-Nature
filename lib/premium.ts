@@ -7,7 +7,7 @@ import { Platform, Alert } from 'react-native';
 import {
   initConnection,
   endConnection,
-  fetchProducts,
+  getProducts,
   requestPurchase,
   getAvailablePurchases,
   purchaseUpdatedListener,
@@ -132,7 +132,7 @@ export async function purchasePremium() {
     
     try {
       // 本番環境では必ず商品取得が成功する必要がある
-      products = await fetchProducts({ skus: [PREMIUM_PRODUCT_ID] });
+      products = await getProducts({ skus: [PREMIUM_PRODUCT_ID] });
     } catch (fetchErr) {
       // 開発環境/テスト環境では商品取得が失敗するのが普通
       // テスターユーザーの場合だけは失敗を許可する

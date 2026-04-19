@@ -251,6 +251,18 @@ export default function KaisekiScreen() {
       ) {
         setAnalysisMessage(t("unsupportedImageFormat"));
       } else {
+        // 全てのその他のエラーの場合、まずAPIトークンの再入力を勧める
+        Alert.alert(
+          "解析エラーが発生しました",
+          "エラーが発生しました。多くの場合、APIトークンの期限切れが原因です。トークンを再入力してお試しください。",
+          [
+            { text: "後で", style: "cancel" },
+            { text: "トークンを取得", onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
+            { text: "トークンを入力", onPress: () => setShowTokenInput(true) },
+          ],
+          { cancelable: true },
+        );
+        
         setAnalysisMessage(
           error instanceof Error ? error.message : t("analysisError"),
         );

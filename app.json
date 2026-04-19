@@ -41,6 +41,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "react-native-iap",
+        {
+          "storekitMode": "STOREKIT_HYBRID_MODE",
+          "androidStore": "play"
+        }
       ]
     ],
     "experiments": {

@@ -46,7 +46,10 @@
           "storekitMode": "STOREKIT_HYBRID_MODE",
           "androidStore": "play"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

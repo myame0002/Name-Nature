@@ -155,7 +155,9 @@ export const translations = {
     premiumFeature: "完全版機能",
     premiumFeatureDescription:
       "オリジナルしおりの作成は完全版の機能となります。\n購入すると無制限に作成できます。\n\n完全版で追加される機能:\n- 図鑑を無制限に保存可能\n- オリジナルしおりの作成\n\n以後アップデートによる追加機能を予定しています！",
-    upgradePremium: "完全版にアップグレード",
+    premiumUser: "✨ 完全版ユーザーです",
+    premiumUnlimited: "全機能を無制限でご利用いただけます",
+    upgradePremium: "✨ 完全版を購入する",
   },
   en: {
     // Common
@@ -312,7 +314,9 @@ export const translations = {
     premiumFeature: "Premium Feature",
     premiumFeatureDescription:
       "Custom bookmarks are a premium feature.\nPurchase to create unlimited bookmarks.\n\nPremium features:\n- Unlimited field guide entries\n- Custom bookmarks\n\nMore features coming in future updates!",
-    upgradePremium: "Upgrade to Premium",
+    premiumUser: "✨ Premium User",
+    premiumUnlimited: "All features available without limits",
+    upgradePremium: "✨ Upgrade to Premium",
   },
 } as const;
 

@@ -11,24 +11,6 @@
 let INATURALIST_API_TOKEN: string | null = null;
 const JAPAN_PLACE_ID = 6737;
 
-// デバッグ用：期限切れシミュレーションモード
-let SIMULATE_TOKEN_EXPIRED: boolean = false;
-
-/**
- * デバッグ用：トークン期限切れをシミュレートします
- * true に設定するとトークン自体は有効なまま、APIリクエストのみ強制的に401エラーを返します
- */
-export function setTokenExpiredSimulation(enabled: boolean) {
-  SIMULATE_TOKEN_EXPIRED = enabled;
-}
-
-/**
- * 現在期限切れシミュレーションモードが有効かどうかを返します
- */
-export function isTokenExpiredSimulationEnabled(): boolean {
-  return SIMULATE_TOKEN_EXPIRED;
-}
-
 const categoryConfig = {
   flower: {
     id: "flower",
@@ -505,10 +487,23 @@ export async function loadStoredToken(): Promise<string | null> {
 }
 
 /**
+ * JWTトークンの形式を簡易検証します
+ * iNaturalistのJWTは "xxxxx.yyyyy.zzzzz" の3部構成
+ */
+function isValidJwtFormat(token: string): boolean {
+  if (!token || token.length < 20) return false;
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  // 各パートが空でないことを確認
+  return parts.every((part) => part.length > 0);
+}
+
+/**
  * トークンが設定されているか確認します
+ * JWT形式（xxxxx.yyyyy.zzzzz）であることも検証します
  */
 export function hasValidToken(): boolean {
-  return !!INATURALIST_API_TOKEN && INATURALIST_API_TOKEN.length > 20;
+  return !!INATURALIST_API_TOKEN && isValidJwtFormat(INATURALIST_API_TOKEN);
 }
 
 // ── iNaturalist 直接通信用ヘルパー関数 ─────────────────────────────
@@ -847,13 +842,6 @@ export async function analyzeNaturePhoto(
   }
 
   let response: Response;
-
-  // ✅ デバッグ用：期限切れシミュレーションモード
-  if (SIMULATE_TOKEN_EXPIRED) {
-    // 実際にAPIを叩かず、直接401エラーと同じ挙動を再現
-    SIMULATE_TOKEN_EXPIRED = false; // 一回だけ動作して自動的にOFFになる
-    throw new Error("TOKEN_EXPIRED");
-  }
 
   try {
     const imageData = dataUrlToBlob(imageDataUrl);

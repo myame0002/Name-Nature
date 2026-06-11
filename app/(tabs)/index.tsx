@@ -16,7 +16,7 @@ import {
 import { ScreenWithLeaves } from "../../components/screen-with-leaves";
 import { TokenInputModal } from '../../components/TokenInputModal';
 import { TesterCodeModal } from '../../components/TesterCodeModal';
-import { hasValidToken, setInaturalistToken, loadStoredToken, setTokenExpiredSimulation, isTokenExpiredSimulationEnabled } from '@/lib/api';
+import { hasValidToken, setInaturalistToken, loadStoredToken, isPremiumUser } from '@/lib/api';
 import { purchasePremium } from '@/lib/premium';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -102,6 +102,7 @@ export default function HomeScreen() {
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [showTesterCode, setShowTesterCode] = useState(false);
   const [secretTapCount, setSecretTapCount] = useState(0);
+  const [isPremium, setIsPremium] = useState(false);
   
   // 設定モーダル表示アニメーション
   const settingsModalAnim = useRef(new Animated.Value(0)).current;
@@ -125,16 +126,17 @@ export default function HomeScreen() {
     }
   }, [showSettings]);
 
-  // 設定画面を開いた時にトークン状態を確認
-  useState(() => {
+  // 設定画面を開いた時に状態を確認
+  useEffect(() => {
     if (showSettings) {
+      setIsPremium(isPremiumUser());
       if (hasValidToken()) {
         setTokenStatus('valid');
       } else {
         setTokenStatus('invalid');
       }
     }
-  });
+  }, [showSettings]);
 
   return (
     <ScreenWithLeaves
@@ -328,28 +330,21 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.tokenDebugRow}>
-              <TouchableOpacity
-                style={[styles.debugButton, styles.debugButtonWarn]}
-                onPress={() => {
-                  // ✅ 本物のトークンはそのまま残して、APIだけ強制的に期限切れエラーを返す
-                  setTokenExpiredSimulation(true);
-                  setTokenStatus('expired');
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.debugButtonText, styles.debugButtonTextWarn]}>{t('simulateExpired')}</Text>
-              </TouchableOpacity>
-          </View>
-
-          {/* 完全版アップグレードボタン */}
-          <TouchableOpacity
-            style={[styles.mainSecondaryButton, { borderRadius: 16, marginTop: 8, marginBottom: 8 }]}
-            activeOpacity={0.8}
-            onPress={() => purchasePremium()}
-          >
-            <Text style={styles.mainSecondaryButtonText}>✨ 完全版を購入する</Text>
-          </TouchableOpacity>
+          {/* 完全版ステータス */}
+          {isPremium ? (
+            <View style={styles.premiumStatus}>
+              <Text style={styles.premiumStatusText}>{t('premiumUser')}</Text>
+              <Text style={styles.premiumStatusSubtext}>{t('premiumUnlimited')}</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.mainSecondaryButton, { borderRadius: 16, marginTop: 8, marginBottom: 8 }]}
+              activeOpacity={0.8}
+              onPress={() => purchasePremium()}
+            >
+              <Text style={styles.mainSecondaryButtonText}>{t('upgradePremium')}</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.settingsCloseButton}
@@ -884,6 +879,29 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
+  },
+
+  // 完全版ステータス
+  premiumStatus: {
+    backgroundColor: "#DDF3E6",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#2D6A4F",
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  premiumStatusText: {
+    color: "#1F4C2D",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  premiumStatusSubtext: {
+    color: "#3D7A55",
+    fontSize: 12,
   },
 
   // トークンステータス表示

@@ -14,9 +14,8 @@ import {
 } from "react-native";
 
 import { ScreenWithLeaves } from "../../components/screen-with-leaves";
-import { TokenInputModal } from '../../components/TokenInputModal';
 import { TesterCodeModal } from '../../components/TesterCodeModal';
-import { hasValidToken, setInaturalistToken, loadStoredToken, isPremiumUser } from '@/lib/api';
+import { isPremiumUser } from '@/lib/api';
 import { purchasePremium } from '@/lib/premium';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -98,8 +97,6 @@ export default function HomeScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const { t, language, setLanguage } = useLanguage();
-  const [tokenStatus, setTokenStatus] = useState<'checking' | 'valid' | 'invalid' | 'expired'>('checking');
-  const [showTokenInput, setShowTokenInput] = useState(false);
   const [showTesterCode, setShowTesterCode] = useState(false);
   const [secretTapCount, setSecretTapCount] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
@@ -130,11 +127,6 @@ export default function HomeScreen() {
   useEffect(() => {
     if (showSettings) {
       setIsPremium(isPremiumUser());
-      if (hasValidToken()) {
-        setTokenStatus('valid');
-      } else {
-        setTokenStatus('invalid');
-      }
     }
   }, [showSettings]);
 
@@ -160,25 +152,6 @@ export default function HomeScreen() {
               style={styles.mainPrimaryButton}
               activeOpacity={0.85}
               onPress={() => {
-                if (!hasValidToken()) {
-                  Alert.alert(
-                    t('iNaturalistAlertTitle'),
-                    t('iNaturalistAlertMessage'),
-                    [
-                      { text: t('readDetails'), onPress: () => router.push("/modal") },
-                      { text: t('getToken'), onPress: () => Linking.openURL("https://www.inaturalist.org/users/api_token") },
-                      { 
-                        text: t('enterToken'), 
-                        onPress: () => {
-                          setShowTokenInput(true);
-                        }
-                      },
-                      { text: t('later'), style: "cancel" }
-                    ],
-                    { cancelable: true }
-                  );
-                  return;
-                }
                 router.push("/kaiseki");
               }}
             >
@@ -279,56 +252,15 @@ export default function HomeScreen() {
               </View>
             </View>
 
-             {/* 🔑 APIトークン状態 */}
+             {/* API接続状態 */}
              <View style={styles.settingRow}>
-               <Text style={styles.settingLabel}>{t('apiToken')}</Text>
+               <Text style={styles.settingLabel}>API</Text>
                <View style={styles.tokenStatusContainer}>
-                 <View style={[
-                   styles.tokenStatusBadge,
-                   tokenStatus === 'valid' && styles.tokenStatusValid,
-                   tokenStatus === 'invalid' && styles.tokenStatusInvalid,
-                   tokenStatus === 'expired' && styles.tokenStatusExpired,
-                 ]}>
-                   <Text style={[
-                     styles.tokenStatusText,
-                     tokenStatus === 'valid' && styles.tokenStatusTextValid,
-                   ]}>
-                     {tokenStatus === 'valid' ? t('tokenValid') :
-                      tokenStatus === 'expired' ? t('tokenExpired') : t('tokenInvalid')}
-                   </Text>
+                 <View style={styles.tokenStatusBadge}>
+                   <Text style={styles.tokenStatusText}>接続済み</Text>
                  </View>
-                 <TouchableOpacity 
-                   style={[styles.toggleButton, { marginLeft: 8 }]}
-                   onPress={() => setShowTokenInput(true)}
-                   activeOpacity={0.8}
-                 >
-                   <Text style={styles.toggleButtonText}>
-                     {t('enterToken')}
-                   </Text>
-                 </TouchableOpacity>
                </View>
              </View>
-
-            <View style={styles.tokenDebugRow}>
-              <TouchableOpacity
-                style={styles.debugButton}
-                onPress={() => setInaturalistToken(null)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.debugButtonText}>{t('deleteToken')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.debugButton}
-                onPress={async () => {
-                  await loadStoredToken();
-                  hasValidToken() ? setTokenStatus('valid') : setTokenStatus('invalid');
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.debugButtonText}>{t('refreshStatus')}</Text>
-              </TouchableOpacity>
-            </View>
 
           {/* 完全版ステータス */}
           {isPremium ? (
@@ -364,15 +296,6 @@ export default function HomeScreen() {
            </Animated.View>
         </TouchableOpacity>
       </Modal>
-
-       {/* 🔑 トークン入力モーダル */}
-       <TokenInputModal
-         visible={showTokenInput}
-         onClose={() => setShowTokenInput(false)}
-         onSuccess={() => {
-           Alert.alert(t('setupComplete'), t('tokenSaved'), [], { cancelable: true });
-         }}
-       />
 
        {/* 🔑 テスターコード入力モーダル */}
        <TesterCodeModal

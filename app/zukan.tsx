@@ -338,8 +338,8 @@ export default function ZukanScreen() {
     }, 100);
 
     Alert.alert(
-      "完了",
-      `${selectedEntryIds.size} 件の記録をカテゴリに追加しました！`,
+      t('complete'),
+      t('entriesAdded', { count: String(selectedEntryIds.size) }),
       [],
       {
         cancelable: true,
@@ -353,13 +353,13 @@ export default function ZukanScreen() {
       {showAddCategoryModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>新しいしおりを追加</Text>
+            <Text style={styles.modalTitle}>{t('addBookmark')}</Text>
 
             <View style={styles.modalInputRow}>
-              <Text style={styles.modalLabel}>カテゴリ名</Text>
+              <Text style={styles.modalLabel}>{t('categoryName')}</Text>
               <TextInput
                 style={styles.nameInputBox}
-                placeholder="名前を入力してください"
+                placeholder={t('enterName')}
                 placeholderTextColor="#999999"
                 value={newCategoryName}
                 onChangeText={setNewCategoryName}
@@ -368,7 +368,7 @@ export default function ZukanScreen() {
             </View>
 
             <View style={styles.modalInputRow}>
-              <Text style={styles.modalLabel}>色を選択</Text>
+              <Text style={styles.modalLabel}>{t('selectColor')}</Text>
               <View style={styles.colorPalette}>
                 {categoryColorOptions.map((color, index) => (
                   <TouchableOpacity
@@ -389,13 +389,37 @@ export default function ZukanScreen() {
             <TouchableOpacity
               style={styles.selectEntriesButton}
               onPress={() => {
-                const categoryId = editingCategoryId || `custom-${Date.now()}`;
-                startCategoryEditMode(categoryId);
+                // カテゴリ名が未入力ならエラー
+                if (!newCategoryName.trim()) {
+                  Alert.alert(t('error'), t('enterName'));
+                  return;
+                }
+
+                // 先にカテゴリを追加保存してから記録選択モードへ
+                const newCategoryId = `custom-${Date.now()}`;
+                const selectedColor =
+                  categoryColorOptions[selectedColorIndex];
+                const r = parseInt(selectedColor.slice(1, 3), 16);
+                const g = parseInt(selectedColor.slice(3, 5), 16);
+                const b = parseInt(selectedColor.slice(5, 7), 16);
+                const lightColor = `#${Math.min(255, r + 10).toString(16)}${Math.min(255, g + 10).toString(16)}${Math.min(255, b + 10).toString(16)}`;
+
+                categoryLabel[newCategoryId] = newCategoryName;
+                categoryColor[newCategoryId] = selectedColor;
+                categoryColorActive[newCategoryId] = lightColor;
+
+                addCustomCategory({
+                  name: newCategoryName,
+                  color: selectedColor,
+                  colorActive: lightColor,
+                });
+
+                startCategoryEditMode(newCategoryId);
               }}
               activeOpacity={0.7}
             >
               <Text style={styles.selectEntriesButtonText}>
-                このカテゴリに含める記録を選択
+                {t('selectEntries')}
               </Text>
             </TouchableOpacity>
 
@@ -409,14 +433,14 @@ export default function ZukanScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelButtonText}>キャンセル</Text>
+                <Text style={styles.modalCancelButtonText}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalSaveButton]}
                 onPress={() => {
                   if (!newCategoryName.trim()) {
-                    Alert.alert("エラー", "カテゴリ名を入力してください");
+                    Alert.alert(t('error'), t('enterName'));
                     return;
                   }
 
@@ -447,13 +471,13 @@ export default function ZukanScreen() {
                   setSelectedColorIndex(0);
 
                   Alert.alert(
-                    "完了",
-                    `「${newCategoryName}」カテゴリを追加しました`,
+                    t('complete'),
+                    t('categoryAdded', { name: newCategoryName }),
                   );
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalSaveButtonText}>追加する</Text>
+                <Text style={styles.modalSaveButtonText}>{t('add')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -464,13 +488,13 @@ export default function ZukanScreen() {
       {showEditCategoryModal && editingCategoryId && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>しおりを編集</Text>
+            <Text style={styles.modalTitle}>{t('editBookmark')}</Text>
 
             <View style={styles.modalInputRow}>
-              <Text style={styles.modalLabel}>カテゴリ名</Text>
+              <Text style={styles.modalLabel}>{t('categoryName')}</Text>
               <TextInput
                 style={styles.nameInputBox}
-                placeholder="名前を入力してください"
+                placeholder={t('enterName')}
                 placeholderTextColor="#999999"
                 value={newCategoryName}
                 onChangeText={setNewCategoryName}
@@ -479,7 +503,7 @@ export default function ZukanScreen() {
             </View>
 
             <View style={styles.modalInputRow}>
-              <Text style={styles.modalLabel}>色を選択</Text>
+              <Text style={styles.modalLabel}>{t('selectColor')}</Text>
               <View style={styles.colorPalette}>
                 {categoryColorOptions.map((color, index) => (
                   <TouchableOpacity
@@ -506,7 +530,7 @@ export default function ZukanScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.selectEntriesButtonText}>
-                このカテゴリに含める記録を選択
+                {t('selectEntries')}
               </Text>
             </TouchableOpacity>
 
@@ -515,12 +539,12 @@ export default function ZukanScreen() {
                 style={[styles.modalButton, styles.modalDeleteButton]}
                 onPress={() => {
                   Alert.alert(
-                    "削除の確認",
-                    `「${categoryLabel[editingCategoryId]}」カテゴリを削除しますか？`,
+                    t('confirmDelete'),
+                    t('confirmDeleteCategory', { name: categoryLabel[editingCategoryId] }),
                     [
-                      { text: "キャンセル", style: "cancel" },
+                      { text: t('cancel'), style: "cancel" },
                       {
-                         text: "削除する",
+                         text: t('deleteAction'),
                          style: "destructive",
                          onPress: () => {
                            delete categoryLabel[editingCategoryId];
@@ -539,7 +563,7 @@ export default function ZukanScreen() {
                            setNewCategoryName("");
                            setSelectedColorIndex(0);
 
-                           Alert.alert("完了", "カテゴリを削除しました");
+                           Alert.alert(t('complete'), t('categoryDeleted'));
                          },
                       },
                     ],
@@ -547,7 +571,7 @@ export default function ZukanScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalDeleteButtonText}>削除</Text>
+                <Text style={styles.modalDeleteButtonText}>{t('deleteAction')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -560,14 +584,14 @@ export default function ZukanScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelButtonText}>キャンセル</Text>
+                <Text style={styles.modalCancelButtonText}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalSaveButton]}
                 onPress={() => {
                   if (!newCategoryName.trim()) {
-                    Alert.alert("エラー", "カテゴリ名を入力してください");
+                    Alert.alert(t('error'), t('enterName'));
                     return;
                   }
 
@@ -587,11 +611,11 @@ export default function ZukanScreen() {
                   setNewCategoryName("");
                   setSelectedColorIndex(0);
 
-                  Alert.alert("完了", "カテゴリを更新しました");
+                  Alert.alert(t('complete'), t('categoryUpdated'));
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalSaveButtonText}>保存</Text>
+                <Text style={styles.modalSaveButtonText}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -670,7 +694,7 @@ export default function ZukanScreen() {
                             styles.deleteButtonText,
                           ]}
                         >
-                          削除 ({selectedEntryIds.size})
+                          {t('delete')} ({selectedEntryIds.size})
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -686,7 +710,7 @@ export default function ZukanScreen() {
               {selectedCategory.startsWith("custom-") && !isEditMode && (
                 <View style={styles.editHintBar}>
                   <Text style={styles.editHintText}>
-                    オリジナルしおりを長押しで編集
+                    {t('editHint')}
                   </Text>
                 </View>
               )}
@@ -774,11 +798,11 @@ export default function ZukanScreen() {
                     style={[styles.tabButton, styles.addTabButton]}
                     onPress={() => {
                       Alert.alert(
-                        "完全版機能",
-                        "オリジナルしおりの作成は完全版の機能となります。\n購入すると無制限に作成できます。\n\n完全版で追加される機能:\n- 図鑑を無制限に保存可能\n- オリジナルしおりの作成\n\n以後アップデートによる追加機能を予定しています！",
+                        t('premiumFeature'),
+                        t('premiumFeatureDescription'),
                         [
-                          { text: "後で", style: "cancel" },
-                          { text: "完全版にアップグレード" },
+                          { text: t('later'), style: "cancel" },
+                          { text: t('upgradePremium') },
                         ],
                       );
                     }}
@@ -1246,5 +1270,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#2D6A4F",
+    textAlign: "center",
+    lineHeight: 20,
   },
 });

@@ -2,7 +2,7 @@
   "expo": {
     "name": "NameNature",
     "slug": "Name-Nature",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon_home.png",
     "scheme": "namenature",
@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "versionCode": 29,
+      "versionCode": 30,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon_home.png",
         "backgroundColor": "#ffffff"

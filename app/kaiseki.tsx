@@ -277,7 +277,7 @@ export default function KaisekiScreen() {
     const newEntry = addGuideEntry({
       category: selectedCategory!,
       approval: "rejected",
-      title: "判定保留（再観察）",
+      title: "---",
       scientificName: "",
       imageUrl: imageUri ?? "",
       imageDataUrl: "",
@@ -660,7 +660,7 @@ export default function KaisekiScreen() {
                   activeOpacity={0.85}
                   onPress={handleRejectAll}
                 >
-                  <Text style={styles.rejectButtonText}>✕ どれも違いそう…</Text>
+                  <Text style={styles.rejectButtonText}>{t("rejectOption")}</Text>
                 </TouchableOpacity>
               </View>
             )}

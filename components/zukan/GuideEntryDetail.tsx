@@ -201,7 +201,7 @@ export function GuideEntryDetail({
     });
     setIsEditMode(false);
     onEntryUpdated();
-    Alert.alert("保存完了", "情報が更新されました", [], { cancelable: true });
+    Alert.alert(t("saveComplete"), t("saveCompleteMessage"), [], { cancelable: true });
   };
 
   const handleCancel = () => {

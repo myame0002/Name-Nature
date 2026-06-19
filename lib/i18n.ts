@@ -76,6 +76,7 @@ export const translations = {
     candidates: "候補",
     analysisCompleteMessage: "あなたに、よりよい自然の出会いを 🌿",
     analysisRejectedMessage: "すみません…私に新たな発見をありがとう！",
+    rejectOption: "✕ どれも違いそう…",
     openGuide: "図鑑を開く",
     startNewAnalysis: "別の解析を行う",
     goHome: "ホームに戻る",
@@ -83,6 +84,8 @@ export const translations = {
     externalLinkConfirm: "外部サイトへ移動します。よろしいですか？",
     openInaturalist: "iNaturalist で開く",
     recordSaved: "✅ 記録が保存されました！",
+    saveComplete: "保存完了",
+    saveCompleteMessage: "情報が更新されました",
     freeLimitAlertTitle: "保存上限に達しました",
     freeLimitAlertMessage: "本アプリをご愛用頂きありがとうございます！無料版では最大10件まで図鑑に保存可能となっています。\n\n完全版で追加される機能:\n- 図鑑を無制限に保存可能\n- オリジナルしおりの作成\n\n以後アップデートによる追加機能を予定しています！",
 
@@ -237,6 +240,7 @@ export const translations = {
     candidates: "Candidates",
     analysisCompleteMessage: "Discover better nature experiences with you 🌿",
     analysisRejectedMessage: "Sorry... Thank you for this new discovery!",
+    rejectOption: "✕ None of these seem right…",
     openGuide: "Open Field Guide",
     startNewAnalysis: "Start New Analysis",
     goHome: "Go Home",
@@ -244,6 +248,8 @@ export const translations = {
     externalLinkConfirm: "You are about to be redirected to an external site. Continue?",
     openInaturalist: "Open in iNaturalist",
     recordSaved: "✅ Record saved successfully!",
+    saveComplete: "Save Complete",
+    saveCompleteMessage: "Information has been updated",
     freeLimitAlertTitle: "Entry limit reached",
     freeLimitAlertMessage: "Thank you for using our app! The free version allows up to 10 entries in your field guide.\n\nPremium features:\n- Unlimited field guide entries\n- Custom bookmarks\n\nMore features coming in future updates!",
 

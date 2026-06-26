@@ -206,23 +206,36 @@ export default function KaisekiScreen() {
     setConfirmedCandidateId(null);
     setCurrentDecision(null);
 
-    try {
-      const response = await analyzeNaturePhoto(
-        selectedCategory,
-        imageDataUrl,
-        language,
-      );
-      setCandidates(response.results);
-      setAnalysisStatus("success");
+    const result = await analyzeNaturePhoto(
+      selectedCategory,
+      imageDataUrl,
+      language,
+    );
 
-      if (response.results.length === 0) {
-        setAnalysisMessage(t("noCandidatesFound"));
-      }
-    } catch (error) {
+    if (!result.success) {
       setAnalysisStatus("error");
-      setAnalysisMessage(
-        error instanceof Error ? error.message : t("analysisError"),
-      );
+      const error = result.error;
+      
+      if (error.type === "token_expired") {
+        setAnalysisMessage(
+          "iNaturalist APIのトークンが期限切れです。管理者にお知らせください。",
+        );
+        Alert.alert(
+          "APIエラー",
+          "iNaturalist APIのトークンが期限切れました。\n管理者に連絡してください。",
+          [{ text: "OK" }],
+        );
+      } else {
+        setAnalysisMessage(error.message);
+      }
+      return;
+    }
+
+    setCandidates(result.data.results);
+    setAnalysisStatus("success");
+
+    if (result.data.results.length === 0) {
+      setAnalysisMessage(t("noCandidatesFound"));
     }
   }
 

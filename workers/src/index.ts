@@ -83,13 +83,6 @@ interface Candidate {
   taxonomy: TaxonomyInfo;
 }
 
-interface AnalysisResponse {
-  category: { id: CategoryId; name: string; notice: string };
-  notice?: string;
-  results: Candidate[];
-  totalResults: number;
-}
-
 interface Env {
   INATURALIST_API_TOKEN?: string;
   ENVIRONMENT?: string;
@@ -158,7 +151,15 @@ function formatTaxonLabel(taxon: any): string {
 function buildTaxonomy(taxon: any, taxonomyLookup: Map<number, any>): TaxonomyInfo {
   const ranks = ["kingdom", "phylum", "class", "order", "family", "genus", "species"];
   const lineage = [...(taxon.ancestor_ids ?? []), taxon.id];
-  const taxonomy = Object.fromEntries(ranks.map((rank) => [rank, null])) as TaxonomyInfo;
+  const taxonomy = {
+    kingdom: null,
+    phylum: null,
+    class: null,
+    order: null,
+    family: null,
+    genus: null,
+    species: null,
+  } as TaxonomyInfo;
   for (const id of lineage) {
     const lt = taxonomyLookup.get(id);
     if (!lt || !ranks.includes(lt.rank)) continue;
@@ -254,7 +255,7 @@ async function normalizeResults(results: any[], rankingConfig: any, language: st
   );
 }
 
-function buildResponseNotice(category: any, normalizedResults: Candidate[], language: string): string {
+function buildResponseNotice(category: any, normalizedResults: Candidate[]): string {
   const baseNotice = category.notice;
   if (normalizedResults.length === 0) {
     return `${baseNotice} 今回の写真は信頼できる候補が絞れなかったため、無理に近くない候補は出していません。`;
@@ -322,14 +323,24 @@ async function handleAnalyze(request: Request, env: Env): Promise<Response> {
     const json = text ? JSON.parse(text) : {};
 
     if (!upstreamResponse.ok) {
-      return jsonResponse(
-        { error: json.error ?? "Upstream request failed", detail: json.message ?? json.details ?? text },
-        upstreamResponse.status,
-      );
-    }
+        const errorMessage = json.error ?? json.message ?? text;
+        const isTokenError = upstreamResponse.status === 401 || 
+                            errorMessage.toLowerCase().includes('token') ||
+                            errorMessage.toLowerCase().includes('unauthorized') ||
+                            errorMessage.toLowerCase().includes('authentication');
+        
+        return jsonResponse(
+          { 
+            error: isTokenError ? "TOKEN_EXPIRED" : "Upstream request failed",
+            detail: errorMessage,
+            isTokenError 
+          },
+          upstreamResponse.status,
+        );
+      }
 
     const results = await normalizeResults(json.results ?? [], category, language, jwt);
-    const notice = buildResponseNotice(category, results, language);
+    const notice = buildResponseNotice(category, results);
 
     return jsonResponse({
       category: { id: category.id, name: category.name, notice: category.notice },

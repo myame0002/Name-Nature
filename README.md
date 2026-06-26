@@ -1,6 +1,82 @@
-# Welcome to your Expo app 👋
+# Name Nature
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+自然写真を解析して図鑑を作成するアプリです。iNaturalistのコンピュータビジョンAPIを利用して、花・キノコ・鳥・昆虫を識別します。
+
+## iNaturalist API トークン管理
+
+本アプリはCloudflare Workers経由でiNaturalist APIを呼び出しています。APIトークンは**長期トークン（Long-lived token）** を使用することを推奨します。
+
+### トークン有効期限について
+
+- **短期トークン**: 約2日で無効になる（旧方式）
+- **長期トークン**: 約1年間有効（推奨）
+
+### 長期トークンの取得方法
+
+詳細な手順は [docs/INATURALIST_TOKEN_SETUP.md](docs/INATURALIST_TOKEN_SETUP.md) を参照してください。
+
+簡易手順:
+1. [iNaturalist 開発者ページ](https://www.inaturalist.org/oauth/applications) でアプリケーションを登録
+2. OAuth認証フローで長期トークンを取得
+3. `cd workers && wrangler secret put INATURALIST_API_TOKEN` でトークンを設定
+4. `wrangler deploy` でデプロイ
+
+### トークン期限切れの検出
+
+本アプリはトークンの期限切れを自動検出し、ユーザーに通知します。フロントエンド・バックエンド両方でエラーハンドリングを実装しています。
+
+## 技術スタック
+
+- **Frontend**: Expo (React Native)
+- **Backend**: Cloudflare Workers
+- **API**: iNaturalist Computer Vision API
+- **Storage**: AsyncStorage / localStorage
+
+## 開発環境のセットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+WorkersのSecretsにiNaturalist APIトークンを設定:
+
+```bash
+cd workers
+wrangler secret put INATURALIST_API_TOKEN
+```
+
+### 3. アプリの起動
+
+```bash
+# Workersのローカル開発
+cd workers
+wrangler dev
+
+# Expoアプリ（別ターミナル）
+npx expo start
+```
+
+## 機能
+
+- 📸 写真を撮影またはライブラリから選択
+- 🔍 iNaturalist APIによる自動識別
+- 📚 図鑑機能（候補の保存・管理）
+- 🌐 日本語/英語対応
+- 💎 プレミアム機能（無制限図鑑エントリ）
+
+## ライセンス
+
+[LICENSE](LICENSE)
+
+## 参考リンク
+
+- [iNaturalist API ドキュメント](https://api.inaturalist.org/v1/docs/)
+- [Cloudflare Workers ドキュメント](https://developers.cloudflare.com/workers/)
+- [Expo ドキュメント](https://docs.expo.dev/)
 
 ## Get started
 

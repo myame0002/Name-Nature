@@ -376,11 +376,30 @@ loadCustomCategories();
  * iNaturalist API を Cloudflare Workers 経由で呼び出して自然写真を解析します。
  * ユーザーは iNaturalist トークンを入力する必要がありません。
  */
+export type TokenExpiredError = {
+  type: "token_expired";
+  message: string;
+};
+
+export type ApiError = {
+  type: "api_error";
+  message: string;
+};
+
+export type NetworkError = {
+  type: "network_error";
+  message: string;
+};
+
+export type AnalysisResult =
+  | { success: true; data: AnalysisResponse }
+  | { success: false; error: TokenExpiredError | ApiError | NetworkError };
+
 export async function analyzeNaturePhoto(
   categoryId: CategoryId,
   imageDataUrl: string,
   language: "ja" | "en" = "ja",
-): Promise<AnalysisResponse> {
+): Promise<AnalysisResult> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/analyze`, {
       method: "POST",
@@ -396,20 +415,53 @@ export async function analyzeNaturePhoto(
     const json = parseJsonBody(text);
 
     if (!response.ok) {
-      throw new Error(extractErrorMessage(json, response.status, text));
+      const errorData = json as Record<string, unknown> | null;
+      const isTokenError =
+        response.status === 401 ||
+        (errorData && typeof errorData.error === "string" && errorData.error === "TOKEN_EXPIRED") ||
+        (errorData && typeof errorData.isTokenError === "boolean" && errorData.isTokenError);
+
+      if (isTokenError) {
+        return {
+          success: false,
+          error: {
+            type: "token_expired",
+            message:
+              "iNaturalist APIのトークンが期限切れです。管理者にお知らせください。",
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          type: "api_error",
+          message: extractErrorMessage(json, response.status, text),
+        },
+      };
     }
 
     if (json === null) {
-      throw new Error("サーバーから空の応答が返りました。");
+      return {
+        success: false,
+        error: {
+          type: "api_error",
+          message: "サーバーから空の応答が返りました。",
+        },
+      };
     }
 
-    return json as AnalysisResponse;
+    return { success: true, data: json as AnalysisResponse };
   } catch (e) {
     console.error("API接続エラー:", e);
-    if (e instanceof Error) throw e;
-    throw new Error(
-      "サーバーに接続できません。ネットワーク接続を確認してください。",
-    );
+    return {
+      success: false,
+      error: {
+        type: "network_error",
+        message:
+          "サーバーに接続できません。ネットワーク接続を確認してください。",
+      },
+    };
   }
 }
 
